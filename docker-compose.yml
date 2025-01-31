@@ -1,5 +1,4 @@
-version: '3.8'
-
+version: '3'
 services:
   api:
     build: .
@@ -8,7 +7,7 @@ services:
     volumes:
       - .:/app
     environment:
-      - REDIS_HOST=redis
+      - REDIS_HOST=truenas.chickenmilkbomb.com
       - REDIS_PORT=6379
     networks:
       - upscaler-network
@@ -35,10 +34,6 @@ services:
       restart_policy:
         condition: on-failure
         max_attempts: 3
-    profiles:
-      - gpu
-      - default  # This allows the service to start without GPU if USE_GPU=0
 
 networks:
   upscaler-network:
-    external: true  # This allows us to connect to the existing Redis network

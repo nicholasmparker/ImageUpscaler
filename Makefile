@@ -12,6 +12,16 @@ lint:
 	black . --check
 	ruff check .
 
+test-e2e: ## Run end-to-end tests
+	@if [ -z "$(IMAGE)" ]; then \
+		echo "Error: Please provide an image path using IMAGE=path/to/image.jpg"; \
+		exit 1; \
+	fi
+	./tests/e2e/run_test.sh "$(IMAGE)"
+
+test: 
+	# Add test command here
+
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
