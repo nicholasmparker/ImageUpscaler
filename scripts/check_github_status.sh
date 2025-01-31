@@ -18,6 +18,13 @@ COMMIT_SHA=$(git rev-parse HEAD)
 
 echo -e "${YELLOW}Checking GitHub Actions status for ${REPO_NAME} (${BRANCH})...${NC}"
 
+# Function to get workflow run details
+get_workflow_details() {
+    local run_id=$1
+    curl -s -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/${REPO_NAME}/actions/runs/${run_id}/jobs"
+}
+
 # Function to check workflow status
 check_workflow_status() {
     # Get the workflow runs for this commit
@@ -33,10 +40,8 @@ check_workflow_status() {
     fi
     
     # Get status of each workflow
-    echo $WORKFLOW_RUNS | jq -r '.workflow_runs[] | "\(.name): \(.status) (\(.conclusion))"' | while read -r line; do
-        NAME=$(echo $line | cut -d: -f1)
-        STATUS=$(echo $line | cut -d: -f2- | cut -d'(' -f1 | xargs)
-        CONCLUSION=$(echo $line | cut -d'(' -f2 | cut -d')' -f1)
+    echo $WORKFLOW_RUNS | jq -r '.workflow_runs[] | "\(.name)|\(.status)|\(.conclusion)|\(.id)"' | while read -r line; do
+        IFS='|' read -r NAME STATUS CONCLUSION RUN_ID <<< "$line"
         
         case $STATUS in
             "completed")
@@ -44,6 +49,12 @@ check_workflow_status() {
                     echo -e "${GREEN}✓ $NAME: Success${NC}"
                 else
                     echo -e "${RED}✗ $NAME: $CONCLUSION${NC}"
+                    # Get detailed error information
+                    DETAILS=$(get_workflow_details $RUN_ID)
+                    # Extract failed steps and their error messages
+                    echo $DETAILS | jq -r '.jobs[] | select(.conclusion != "success") | "\(.name): \(.steps[] | select(.conclusion == "failure") | .name)"' | while read -r error; do
+                        echo -e "${RED}  ↳ Failed step: $error${NC}"
+                    done
                 fi
                 ;;
             "in_progress")
