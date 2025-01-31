@@ -1,14 +1,4 @@
-# Stage 1: Download model
-FROM python:3.9-slim AS model
-
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y wget \
-    && wget -O RealESRGAN_x4plus.pth \
-    https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth \
-    && rm -rf /var/lib/apt/lists/*
-
-# Stage 2: Build dependencies
+# Stage 1: Build dependencies
 FROM python:3.9-slim AS builder
 
 WORKDIR /app
@@ -23,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements/prod.txt requirements.txt
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
 
-# Stage 3: Runtime
+# Stage 2: Runtime
 FROM python:3.9-slim
 
 WORKDIR /app
@@ -35,12 +25,12 @@ RUN mkdir -p /app/models
 RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels and model from previous stages
+# Copy wheels from previous stage
 COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/requirements.txt .
-COPY --from=model /app/RealESRGAN_x4plus.pth /app/models/RealESRGAN_x4plus.pth
 
 # Install dependencies from wheels
 RUN pip install --no-cache /wheels/*
