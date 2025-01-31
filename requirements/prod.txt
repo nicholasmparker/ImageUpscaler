@@ -2,7 +2,7 @@ fastapi==0.109.0
 uvicorn==0.27.0
 python-multipart==0.0.18
 redis==5.0.1
-basicsr==1.4.2
+git+https://github.com/House-Leo/BasicSR2.0.git
 realesrgan==0.3.0
 pillow==10.3.0
 requests==2.32.2
