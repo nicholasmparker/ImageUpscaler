@@ -1,5 +1,4 @@
 from fastapi import FastAPI, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
 import redis
 import os
 from .tasks import process_image

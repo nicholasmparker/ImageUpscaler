@@ -1,9 +1,6 @@
 import uuid
 from fastapi import UploadFile
-import aiofiles
-import os
 import requests
-import json
 
 
 async def process_image(image: UploadFile, webhook_url: str, redis_client):
