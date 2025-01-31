@@ -8,7 +8,7 @@ pillow==10.3.0
 requests==2.32.2
 pydantic==2.5.3
 torch==2.2.0
-torchvision==0.16.2
+torchvision==0.17.0
 numpy==1.24.3
 
 # Security fixes for transitive dependencies
