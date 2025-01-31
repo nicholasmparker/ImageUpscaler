@@ -74,6 +74,57 @@ Response will include the current device being used:
 }
 ```
 
+## Development Setup
+
+### Initial Setup
+
+1. Create a Python virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install dependencies and set up pre-commit hooks:
+   ```bash
+   make install
+   ```
+
+### Development Commands
+
+We provide several make commands to help with development:
+
+- `make format`: Format code using Black and Ruff
+- `make lint`: Run linting checks
+- `make clean`: Clean up Python cache files
+- `make docker-build`: Build Docker images
+- `make docker-up`: Start Docker containers
+- `make docker-down`: Stop Docker containers
+
+### Pre-commit Hooks
+
+The repository is set up with pre-commit hooks that run automatically before each commit:
+
+- Black (code formatting)
+- Ruff (linting)
+- YAML/TOML validation
+- File checks (trailing whitespace, large files, etc.)
+
+If a hook fails, the commit will be aborted. You can run `make format` to fix most issues automatically.
+
+### Manual Checks
+
+To run checks manually:
+
+1. Format code:
+   ```bash
+   make format
+   ```
+
+2. Run linting:
+   ```bash
+   make lint
+   ```
+
 ## Development
 
 - Code formatting is handled by Black
