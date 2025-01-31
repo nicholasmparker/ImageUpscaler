@@ -1,0 +1,32 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.24.0 \
+    python-multipart==0.0.6 \
+    basicsr==1.4.2 \
+    realesrgan==0.3.0 \
+    pillow==10.1.0 \
+    numpy==1.24.3
+
+# Download the model
+RUN mkdir -p /app/models && \
+    wget -O /app/models/RealESRGAN_x4plus.pth \
+    https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
+
+# Copy the service code
+COPY ./esrgan_service /app/esrgan_service
+
+ENV MODEL_PATH=/app/models/RealESRGAN_x4plus.pth
+
+CMD ["uvicorn", "esrgan_service.main:app", "--host", "0.0.0.0", "--port", "8001"]

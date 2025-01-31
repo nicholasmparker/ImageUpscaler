@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - upscaler-network
+    depends_on:
+      - esrgan
+
+  esrgan:
+    build:
+      context: .
+      dockerfile: Dockerfile.esrgan
+    expose:
+      - "8001"
+    environment:
+      - USE_GPU=${USE_GPU:-0}  # Default to CPU mode if not specified
+    networks:
+      - upscaler-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    profiles:
+      - gpu
+      - default  # This allows the service to start without GPU if USE_GPU=0
+
+networks:
+  upscaler-network:
+    external: true  # This allows us to connect to the existing Redis network

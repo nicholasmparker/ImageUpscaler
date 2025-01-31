@@ -1,0 +1,11 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+redis==5.0.1
+basicsr==1.4.2
+realesrgan==0.3.0
+pillow==10.1.0
+requests==2.31.0
+pydantic==2.5.2
+black==23.11.0
+ruff==0.1.6

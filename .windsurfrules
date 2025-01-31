@@ -1,0 +1,6 @@
+1) This is a dockerized application, and, unless for some reason something MUST be installed on the host, it should be in docker
+2) You should always use the most simple and well documented approach
+3) This is an application for home use.  We should value simlpicity over complexity.
+4) If you decide we shuld make architectural changes, let's discuss them
+5) I do not care about unit tests for this application.  We should have actual functional end to end tests for our features, and keep it very simple
+6) We are strict on REST best practices
