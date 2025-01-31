@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Response
 from fastapi.responses import FileResponse
 import numpy as np
 from PIL import Image
@@ -93,10 +93,13 @@ async def upscale_image(image: UploadFile):
         input_img = Image.open(temp_input)
         output, _ = upsampler.enhance(np.array(input_img))
         output_img = Image.fromarray(output)
-        output_img.save(temp_output)
-
-        # Return the processed image
-        return FileResponse(temp_output, media_type="image/png")
+        
+        # Convert back to bytes
+        img_byte_arr = io.BytesIO()
+        output_img.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        
+        return Response(content=img_byte_arr, media_type="image/jpeg")
 
     finally:
         # Cleanup temporary files

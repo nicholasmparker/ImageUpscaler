@@ -39,3 +39,6 @@ Thumbs.db
 /tmp/
 *.log
 .env
+
+# Model files
+models/*.pth
