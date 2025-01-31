@@ -100,6 +100,26 @@ We provide several make commands to help with development:
 - `make docker-up`: Start Docker containers
 - `make docker-down`: Stop Docker containers
 
+### GitHub Workflow Status
+
+To check the status of GitHub Actions after pushing:
+
+1. Push and automatically check status:
+   ```bash
+   make push-and-check
+   ```
+
+2. Or check status manually after pushing:
+   ```bash
+   make check-status
+   ```
+
+The status checker will:
+- Show the status of all workflow runs for your commit
+- Update every 30 seconds for up to 2.5 minutes
+- Use color coding to indicate success/failure/in-progress
+- Provide a link to the GitHub Actions dashboard if needed
+
 ### Pre-commit Hooks
 
 The repository is set up with pre-commit hooks that run automatically before each commit:

@@ -1,4 +1,4 @@
-.PHONY: install format lint test clean
+.PHONY: install format lint test clean check-status
 
 install:
 	pip install -r requirements.txt
@@ -22,6 +22,13 @@ clean:
 	find . -type d -name "*.egg" -exec rm -rf {} +
 	find . -type d -name ".pytest_cache" -exec rm -rf {} +
 	find . -type d -name ".ruff_cache" -exec rm -rf {} +
+
+# GitHub commands
+check-status:
+	./scripts/check_github_status.sh
+
+push-and-check: ## Push to GitHub and check workflow status
+	git push && make check-status
 
 # Docker commands
 docker-build:
