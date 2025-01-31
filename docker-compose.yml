@@ -6,8 +6,10 @@ services:
     volumes:
       - .:/app
     environment:
-      - REDIS_HOST=truenas.chickenmilkbomb.com
-      - REDIS_PORT=30036
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ESRGAN_HOST=esrgan
+      - ESRGAN_PORT=8001
     networks:
       - upscaler-network
     depends_on:
@@ -20,13 +22,29 @@ services:
       context: .
       dockerfile: Dockerfile.esrgan
     volumes:
-      - esrgan_models:/app/models
+      - ./models:/app/models
     environment:
       - USE_GPU=${USE_GPU:-false}
     networks:
       - upscaler-network
     ports:
       - "8001:8001"
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./tests:/app/tests
+    command: python -m pytest tests/e2e/test_upscale.py -v
+    environment:
+      - API_HOST=api
+      - API_PORT=8000
+    networks:
+      - upscaler-network
+    depends_on:
+      - api
+      - esrgan
 
 networks:
   upscaler-network:

@@ -1,6 +1,10 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Response
 import redis
 import os
+import requests
+from PIL import Image
+import io
+import uuid
 from .tasks import process_image
 from .models import UpscaleResponse
 
@@ -12,6 +16,21 @@ redis_client = redis.Redis(
     decode_responses=True,
 )
 
+def process_image_sync(image_data: bytes) -> bytes:
+    """Process an image synchronously using the ESRGAN service."""
+    esrgan_host = os.getenv("ESRGAN_HOST", "localhost")
+    esrgan_port = os.getenv("ESRGAN_PORT", "8001")
+    
+    # Send image to ESRGAN service
+    response = requests.post(
+        f"http://{esrgan_host}:{esrgan_port}/upscale",
+        files={"image": image_data}
+    )
+    
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="ESRGAN service failed to process image")
+    
+    return response.content
 
 @app.post("/upscale", response_model=UpscaleResponse)
 async def upscale_image(image: UploadFile, webhook_url: str):
@@ -26,3 +45,16 @@ async def upscale_image(image: UploadFile, webhook_url: str):
     task_id = await process_image(image, webhook_url, redis_client)
 
     return UpscaleResponse(task_id=task_id, status="processing")
+
+@app.post("/upscale/sync")
+async def upscale_image_sync(image: UploadFile):
+    """Synchronous endpoint that returns the processed image directly."""
+    # Read image data
+    image_data = await image.read()
+    
+    # Process image
+    try:
+        processed_image = process_image_sync(image_data)
+        return Response(content=processed_image, media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
