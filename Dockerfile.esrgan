@@ -1,5 +1,5 @@
 # Stage 1: Download model
-FROM python:3.9-slim as model
+FROM python:3.9-slim AS model
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Stage 2: Build dependencies
-FROM python:3.9-slim as builder
+FROM python:3.9-slim AS builder
 
 WORKDIR /app
 
@@ -27,6 +27,9 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.t
 FROM python:3.9-slim
 
 WORKDIR /app
+
+# Create model directory
+RUN mkdir -p /app/models
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -49,6 +52,11 @@ COPY esrgan_service esrgan_service/
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV MODEL_PATH=/app/models/RealESRGAN_x4plus.pth
+ENV USE_GPU=false
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
 
 # Run the application
 CMD ["uvicorn", "esrgan_service.main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  esrgan:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
