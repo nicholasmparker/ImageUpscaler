@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import io
 import os
 
 import pytest
@@ -32,7 +33,7 @@ def test_image_upscale(image_path):
 
     # Save the processed image
     print("Saving processed image...")
-    processed_image = Image.open(response.raw)
+    processed_image = Image.open(io.BytesIO(response.content))
     output_path = "tests/e2e/images/upscaled_bird.jpg"
     processed_image.save(output_path)
 
