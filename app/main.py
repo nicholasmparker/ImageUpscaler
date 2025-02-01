@@ -1,10 +1,11 @@
-from fastapi import FastAPI, UploadFile, HTTPException, Response
-from fastapi.responses import FileResponse
 import os
+
+import redis
 import requests
-import numpy as np
-from .tasks import process_image
+from fastapi import FastAPI, HTTPException, Response, UploadFile
+
 from .models import UpscaleResponse
+from .tasks import process_image
 
 app = FastAPI(title="Image Upscaler API")
 
@@ -59,4 +60,4 @@ async def upscale_image_sync(image: UploadFile):
         processed_image = process_image_sync(image_data)
         return Response(content=processed_image, media_type="image/jpeg")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
