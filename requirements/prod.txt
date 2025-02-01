@@ -2,8 +2,8 @@ fastapi==0.109.0
 uvicorn==0.27.0
 python-multipart==0.0.18
 redis==5.0.1
-git+https://github.com/House-Leo/BasicSR2.0.git
-realesrgan==0.3.0
+git+https://github.com/xinntao/BasicSR.git
+git+https://github.com/xinntao/Real-ESRGAN.git
 pillow==10.3.0
 requests==2.32.2
 pydantic==2.5.3
