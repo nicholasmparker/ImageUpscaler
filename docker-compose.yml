@@ -1,7 +1,20 @@
-# Production compose file - uses pre-built images
 version: '3.8'
 
 services:
+  init:
+    image: curlimages/curl:latest
+    command: |
+      sh -c '
+      mkdir -p /models &&
+      if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
+        echo "Downloading RealESRGAN model..." &&
+        curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+      else
+        echo "Model already exists";
+      fi'
+    volumes:
+      - esrgan_models:/models
+
   api:
     image: ghcr.io/nicholasmparker/imageupscaler-api:latest
     environment:
@@ -28,7 +41,9 @@ services:
     image: ghcr.io/nicholasmparker/imageupscaler-esrgan:latest
     environment:
       - USE_GPU=false
-      - MODEL_PATH=/app/models/RealESRGAN_x4plus.pth
+      - MODEL_PATH=/models/RealESRGAN_x4plus.pth
+    volumes:
+      - esrgan_models:/models
     networks:
       - upscaler-network
     ports:
@@ -39,8 +54,15 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+    depends_on:
+      init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 networks:
   upscaler-network:
     driver: bridge
+
+volumes:
+  esrgan_models:
+    driver: local
