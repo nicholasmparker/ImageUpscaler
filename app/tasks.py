@@ -1,6 +1,7 @@
 import uuid
-from fastapi import UploadFile
+
 import requests
+from fastapi import UploadFile
 
 
 async def process_image(image: UploadFile, webhook_url: str, redis_client):
@@ -13,13 +14,22 @@ async def process_image(image: UploadFile, webhook_url: str, redis_client):
     )
 
     try:
-        # Send to ESRGAN service
-        files = {"image": await image.read()}
-        response = requests.post("http://esrgan:8001/upscale", files=files)
+        # Read image data and content type
+        image_data = await image.read()
+        content_type = image.content_type or "image/jpeg"
+
+        # Send to ESRGAN service with proper content type
+        headers = {"Content-Type": content_type}
+        response = requests.post(
+            "http://esrgan:8001/upscale", data=image_data, headers=headers
+        )
         response.raise_for_status()
 
-        # Send the upscaled image to webhook
-        webhook_response = requests.post(webhook_url, files={"image": response.content})
+        # Send the upscaled image to webhook as raw binary
+        headers = {"Content-Type": "image/jpeg"}
+        webhook_response = requests.post(
+            webhook_url, data=response.content, headers=headers
+        )
         webhook_response.raise_for_status()
 
         redis_client.hset(f"task:{task_id}", "status", "completed")

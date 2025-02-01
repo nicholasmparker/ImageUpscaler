@@ -1,13 +1,13 @@
-import os
-from fastapi import FastAPI, UploadFile, Response
-import numpy as np
-from PIL import Image
-from basicsr.archs.rrdbnet_arch import RRDBNet
-from realesrgan import RealESRGANer
-import uuid
-import torch
-import requests
 import io
+import os
+
+import numpy as np
+import requests
+import torch
+from basicsr.archs.rrdbnet_arch import RRDBNet
+from fastapi import FastAPI, HTTPException, Request, Response
+from PIL import Image
+from realesrgan import RealESRGANer
 
 app = FastAPI(title="Real-ESRGAN Service")
 
@@ -73,23 +73,24 @@ async def health_check():
 
 
 @app.post("/upscale")
-async def upscale_image(image: UploadFile):
+async def upscale_image(request: Request):
     """
     Upscale an image using Real-ESRGAN.
-    Returns the path to the upscaled image.
+    Accepts raw binary image data with a content type header.
+    Returns the upscaled image as JPEG.
     """
-    # Create unique filename for this request
-    temp_input = f"/tmp/{uuid.uuid4()}_input.png"
-    temp_output = f"/tmp/{uuid.uuid4()}_output.png"
+    content_type = request.headers.get("Content-Type")
+    if not content_type or not content_type.startswith("image/"):
+        raise HTTPException(400, "Content-Type must be an image format")
 
     try:
-        # Save uploaded image
-        content = await image.read()
-        with open(temp_input, "wb") as f:
-            f.write(content)
+        # Read raw binary data
+        image_data = await request.body()
+
+        # Convert to PIL Image
+        input_img = Image.open(io.BytesIO(image_data))
 
         # Process image
-        input_img = Image.open(temp_input)
         output, _ = upsampler.enhance(np.array(input_img))
         output_img = Image.fromarray(output)
 
@@ -98,10 +99,12 @@ async def upscale_image(image: UploadFile):
         output_img.save(img_byte_arr, format="JPEG")
         img_byte_arr = img_byte_arr.getvalue()
 
-        return Response(content=img_byte_arr, media_type="image/jpeg")
-
-    finally:
-        # Cleanup temporary files
-        for file in [temp_input, temp_output]:
-            if os.path.exists(file):
-                os.remove(file)
+        return Response(
+            content=img_byte_arr,
+            media_type="image/jpeg",
+            headers={"X-Original-Content-Type": content_type},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to process image: {str(e)}"
+        ) from e
