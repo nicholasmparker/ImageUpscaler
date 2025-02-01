@@ -50,8 +50,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./tests:/app/tests
-      - ./requirements:/app/requirements
+      - .:/app
     command: >
       sh -c "pip install -r requirements/test.txt &&
              python -m pytest tests/e2e/test_upscale.py -v"
@@ -61,8 +60,10 @@ services:
     networks:
       - upscaler-network
     depends_on:
-      - api
-      - esrgan
+      api:
+        condition: service_healthy
+      esrgan:
+        condition: service_healthy
 
   test-webhook:
     build:

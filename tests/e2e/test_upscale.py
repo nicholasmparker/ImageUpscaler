@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 import os
+
+import pytest
 import requests
 from PIL import Image
+
+
+@pytest.fixture
+def image_path():
+    return "tests/e2e/images/bird.jpg"
 
 
 def test_image_upscale(image_path):
@@ -19,47 +26,22 @@ def test_image_upscale(image_path):
 
     if response.status_code != 200:
         print(f"Error: Upload failed with status {response.status_code}")
-        print(response.text)
-        return False
+        print(f"Response: {response.text}")
+        raise Exception("Upload failed")
 
     # Save the processed image
-    processed_image_path = os.path.join(
-        os.path.dirname(image_path), "processed_" + os.path.basename(image_path)
-    )
+    print("Saving processed image...")
+    processed_image = Image.open(response.raw)
+    output_path = "tests/e2e/images/upscaled_bird.jpg"
+    processed_image.save(output_path)
 
-    with open(processed_image_path, "wb") as f:
-        f.write(response.content)
+    # Verify the processed image is larger
+    original_image = Image.open(image_path)
+    assert (
+        processed_image.size[0] > original_image.size[0]
+    ), "Processed image should be larger"
+    assert (
+        processed_image.size[1] > original_image.size[1]
+    ), "Processed image should be larger"
 
-    # Verify the processed image
-    try:
-        with Image.open(processed_image_path) as img:
-            # Check if image dimensions are larger (upscaled)
-            original_img = Image.open(image_path)
-            if (
-                img.size[0] <= original_img.size[0]
-                or img.size[1] <= original_img.size[1]
-            ):
-                print(
-                    f"\nError: Image not upscaled. Original size: {original_img.size}, New size: {img.size}"
-                )
-                return False
-            print(
-                f"\nImage successfully upscaled from {original_img.size} to {img.size}"
-            )
-    except Exception as e:
-        print(f"\nError: Failed to verify processed image: {e}")
-        return False
-
-    return True
-
-
-if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) != 2:
-        print("Usage: python test_upscale.py <image_path>")
-        sys.exit(1)
-
-    image_path = sys.argv[1]
-    success = test_image_upscale(image_path)
-    sys.exit(0 if success else 1)
+    print("Test completed successfully!")
