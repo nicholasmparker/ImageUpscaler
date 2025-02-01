@@ -51,7 +51,10 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./tests:/app/tests
-    command: python -m pytest tests/e2e/test_upscale.py -v
+      - ./requirements:/app/requirements
+    command: >
+      sh -c "pip install -r requirements/test.txt &&
+             python -m pytest tests/e2e/test_upscale.py -v"
     environment:
       - API_HOST=api
       - API_PORT=8000
@@ -72,7 +75,9 @@ services:
       - WEBHOOK_PORT=9090
       - API_HOST=api
       - API_PORT=8000
-    command: python tests/e2e/test_webhook.py tests/e2e/images/bird.jpg
+    command: >
+      sh -c "pip install -r requirements/test.txt &&
+             python tests/e2e/test_webhook.py tests/e2e/images/bird.jpg"
     depends_on:
       api:
         condition: service_healthy
