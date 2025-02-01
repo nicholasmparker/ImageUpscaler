@@ -1,0 +1,13 @@
+# Build compose file - for building and pushing images
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/nicholasmparker/upscaler-api:latest
+
+  esrgan:
+    build:
+      context: .
+      dockerfile: Dockerfile.esrgan
+    image: ghcr.io/nicholasmparker/upscaler-esrgan:latest

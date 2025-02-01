@@ -1,12 +1,9 @@
+# Production compose file - uses pre-built images
 version: '3.8'
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/app
+    image: ghcr.io/nicholasmparker/upscaler-api:latest
     environment:
       - REDIS_HOST=truenas.chickenmilkbomb.com
       - REDIS_PORT=30036
@@ -25,15 +22,13 @@ services:
       start_period: 5s
     depends_on:
       - esrgan
+    restart: unless-stopped
 
   esrgan:
-    build:
-      context: .
-      dockerfile: Dockerfile.esrgan
-    volumes:
-      - ./models:/app/models
+    image: ghcr.io/nicholasmparker/upscaler-esrgan:latest
     environment:
-      - USE_GPU=${USE_GPU:-false}
+      - USE_GPU=false
+      - MODEL_PATH=/app/models/RealESRGAN_x4plus.pth
     networks:
       - upscaler-network
     ports:
@@ -44,49 +39,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./tests:/app/tests
-    command: python -m pytest tests/e2e/test_upscale.py -v
-    environment:
-      - API_HOST=api
-      - API_PORT=8000
-    networks:
-      - upscaler-network
-    depends_on:
-      - api
-      - esrgan
-
-  test-webhook:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/app
-    environment:
-      - WEBHOOK_HOST=test-webhook
-      - WEBHOOK_PORT=9090
-      - API_HOST=api
-      - API_PORT=8000
-    command: python tests/e2e/test_webhook.py tests/e2e/images/bird.jpg
-    depends_on:
-      api:
-        condition: service_healthy
-      esrgan:
-        condition: service_healthy
-    networks:
-      - upscaler-network
-    ports:
-      - "9090:9090"
+    restart: unless-stopped
 
 networks:
   upscaler-network:
     driver: bridge
-
-volumes:
-  esrgan_models:
-    driver: local
