@@ -145,6 +145,38 @@ To run checks manually:
    make lint
    ```
 
+## Deploying with Portainer
+
+This application can be easily deployed using Portainer. Follow these steps:
+
+1. Log into your Portainer instance
+2. Go to "Stacks" in the left sidebar
+3. Click "Add stack"
+4. Name your stack (e.g., "image-upscaler")
+5. Under "Build method", select "Upload"
+6. Upload the `portainer-stack.yml` file from this repository
+7. Click "Deploy the stack"
+
+The stack will create:
+- An initialization container to download the ESRGAN model
+- The API service running on port 8000
+- The ESRGAN service running on port 8001
+
+### Important Notes
+
+- The stack uses a named volume (`esrgan_models`) to persist the downloaded model file
+- Both services have health checks configured
+- The ESRGAN service will wait for the model to be downloaded before starting
+- The services are configured to restart automatically unless stopped manually
+
+### Testing the Deployment
+
+After deployment, you can test the service by:
+
+1. Visit `http://<your-host>:8000/docs` to view the API documentation
+2. Use the `/upscale/sync` endpoint to test image upscaling
+3. Monitor the service logs in Portainer for any issues
+
 ## Development
 
 - Code formatting is handled by Black

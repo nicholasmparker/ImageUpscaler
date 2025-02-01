@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  init:
+    image: curlimages/curl:latest
+    command: |
+      sh -c '
+      mkdir -p /models &&
+      if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
+        echo "Downloading RealESRGAN model..." &&
+        curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+      else
+        echo "Model already exists";
+      fi'
+    volumes:
+      - esrgan_models:/models
+
+  api:
+    image: ghcr.io/nicholasmparker/imageupscaler-api:latest
+    environment:
+      - REDIS_HOST=truenas.chickenmilkbomb.com
+      - REDIS_PORT=30036
+      - REDIS_PASSWORD=1d3pdn
+      - ESRGAN_HOST=esrgan
+      - ESRGAN_PORT=8001
+    networks:
+      - upscaler-network
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - esrgan
+    restart: unless-stopped
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker  # Run on worker nodes
+
+  esrgan:
+    image: ghcr.io/nicholasmparker/imageupscaler-esrgan:latest
+    environment:
+      - USE_GPU=false
+      - MODEL_PATH=/models/RealESRGAN_x4plus.pth
+    volumes:
+      - esrgan_models:/models
+    networks:
+      - upscaler-network
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker  # Run on worker nodes
+
+networks:
+  upscaler-network:
+    driver: overlay  # Use overlay network for Swarm mode
+    attachable: true  # Allow standalone containers to connect
+
+volumes:
+  esrgan_models:
+    driver: local
