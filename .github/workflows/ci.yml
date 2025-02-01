@@ -29,9 +29,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Setup Snyk requirements
+      run: |
+        # Create a requirements.txt in root for Snyk to find
+        cp requirements/prod.txt requirements.txt
+        # Install dependencies for accurate dependency graph
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
     - name: Run Snyk to check for vulnerabilities
       uses: snyk/actions/python@master
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
         args: --severity-threshold=high
+
+    - name: Cleanup
+      if: always()
+      run: rm -f requirements.txt  # Clean up the copied requirements file
