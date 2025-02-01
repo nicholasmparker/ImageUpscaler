@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, UploadFile, Response
 import numpy as np
 from PIL import Image
-from basicsr.archs.rrdb_arch import RRDBNet
+from basicsr.archs.rrdbnet_arch import RRDBNet
 from realesrgan import RealESRGANer
 import uuid
 import torch
