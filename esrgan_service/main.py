@@ -21,22 +21,24 @@ print(f"Initializing Real-ESRGAN using device: {DEVICE}")
 MODEL_PATH = "/app/models/RealESRGAN_x4plus.pth"
 MODEL_URL = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
 
+
 def ensure_model_exists():
     """Download the model if it doesn't exist."""
     if not os.path.exists(MODEL_PATH):
         print(f"Downloading model to {MODEL_PATH}...")
         os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-        
+
         # Download with progress
         response = requests.get(MODEL_URL, stream=True)
-        total_size = int(response.headers.get('content-length', 0))
+        total_size = int(response.headers.get("content-length", 0))
         block_size = 1024
-        
-        with open(MODEL_PATH, 'wb') as f:
+
+        with open(MODEL_PATH, "wb") as f:
             for data in response.iter_content(block_size):
                 f.write(data)
-                
+
         print("Model download complete!")
+
 
 # Initialize model at startup
 print("Initializing Real-ESRGAN...")
@@ -52,7 +54,7 @@ upsampler = RealESRGANer(
     tile_pad=10,
     pre_pad=0,
     half=USE_GPU,  # Only use half precision on GPU
-    device=DEVICE
+    device=DEVICE,
 )
 
 if DEVICE == "cuda":
@@ -93,12 +95,12 @@ async def upscale_image(image: UploadFile):
         input_img = Image.open(temp_input)
         output, _ = upsampler.enhance(np.array(input_img))
         output_img = Image.fromarray(output)
-        
+
         # Convert back to bytes
         img_byte_arr = io.BytesIO()
-        output_img.save(img_byte_arr, format='JPEG')
+        output_img.save(img_byte_arr, format="JPEG")
         img_byte_arr = img_byte_arr.getvalue()
-        
+
         return Response(content=img_byte_arr, media_type="image/jpeg")
 
     finally:
