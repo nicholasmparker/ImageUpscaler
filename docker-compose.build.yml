@@ -4,10 +4,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/nicholasmparker/upscaler-api:latest
+    image: ghcr.io/nicholasmparker/imageupscaler-api:latest
 
   esrgan:
     build:
       context: .
       dockerfile: Dockerfile.esrgan
-    image: ghcr.io/nicholasmparker/upscaler-esrgan:latest
+    image: ghcr.io/nicholasmparker/imageupscaler-esrgan:latest

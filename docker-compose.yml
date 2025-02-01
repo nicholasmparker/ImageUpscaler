@@ -3,7 +3,7 @@ version: '3.8'
 
 services:
   api:
-    image: ghcr.io/nicholasmparker/upscaler-api:latest
+    image: ghcr.io/nicholasmparker/imageupscaler-api:latest
     environment:
       - REDIS_HOST=truenas.chickenmilkbomb.com
       - REDIS_PORT=30036
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   esrgan:
-    image: ghcr.io/nicholasmparker/upscaler-esrgan:latest
+    image: ghcr.io/nicholasmparker/imageupscaler-esrgan:latest
     environment:
       - USE_GPU=false
       - MODEL_PATH=/app/models/RealESRGAN_x4plus.pth

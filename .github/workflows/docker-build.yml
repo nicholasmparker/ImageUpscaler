@@ -15,8 +15,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  API_IMAGE_NAME: ${{ github.repository }}-api
-  ESRGAN_IMAGE_NAME: ${{ github.repository }}-esrgan
+  OWNER: ${{ github.repository_owner }}
+  API_IMAGE_NAME: imageupscaler-api
+  ESRGAN_IMAGE_NAME: imageupscaler-esrgan
 
 jobs:
   build-and-push:
@@ -45,7 +46,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.API_IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -55,6 +56,6 @@ jobs:
           context: .
           file: ./Dockerfile.esrgan
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.ESRGAN_IMAGE_NAME }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.ESRGAN_IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
