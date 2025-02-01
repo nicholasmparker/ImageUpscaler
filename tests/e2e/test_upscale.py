@@ -22,7 +22,8 @@ def test_image_upscale(image_path):
     # Upload image for processing
     print(f"Uploading image to {api_url}...")
     with open(image_path, "rb") as f:
-        response = requests.post(api_url, files={"image": f})
+        files = {"image": ("bird.jpg", f, "image/jpeg")}
+        response = requests.post(api_url, files=files)
 
     if response.status_code != 200:
         print(f"Error: Upload failed with status {response.status_code}")
