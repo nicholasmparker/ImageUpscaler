@@ -2,7 +2,6 @@
 import os
 import requests
 from PIL import Image
-import io
 
 
 def test_image_upscale(image_path):

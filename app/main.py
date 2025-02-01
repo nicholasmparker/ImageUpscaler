@@ -1,10 +1,8 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Response
-import redis
+from fastapi.responses import FileResponse
 import os
 import requests
-from PIL import Image
-import io
-import uuid
+import numpy as np
 from .tasks import process_image
 from .models import UpscaleResponse
 

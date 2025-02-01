@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 COPY requirements/prod.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt && \
+    ls -la /usr/local/lib/python3.9/site-packages/basicsr/archs/ && \
+    cat /usr/local/lib/python3.9/site-packages/basicsr/archs/rrdb_arch.py | head -n 5 && \
+    echo "---" && \
+    cat /usr/local/lib/python3.9/site-packages/basicsr/archs/rrdbnet_arch.py | head -n 5 && \
     pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 # Stage 2: Runtime

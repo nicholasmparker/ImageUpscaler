@@ -1,6 +1,5 @@
 import os
-from fastapi import FastAPI, UploadFile, HTTPException, Response
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, Response
 import numpy as np
 from PIL import Image
 from basicsr.archs.rrdb_arch import RRDBNet
@@ -19,25 +18,23 @@ DEVICE = "cuda" if USE_GPU and torch.cuda.is_available() else "cpu"
 print(f"Initializing Real-ESRGAN using device: {DEVICE}")
 
 MODEL_PATH = "/app/models/RealESRGAN_x4plus.pth"
-MODEL_URL = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
 
 
 def ensure_model_exists():
     """Download the model if it doesn't exist."""
-    if not os.path.exists(MODEL_PATH):
-        print(f"Downloading model to {MODEL_PATH}...")
-        os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    if os.path.exists(MODEL_PATH):
+        return
 
-        # Download with progress
-        response = requests.get(MODEL_URL, stream=True)
-        total_size = int(response.headers.get("content-length", 0))
-        block_size = 1024
+    print("Downloading model...")
+    url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
 
-        with open(MODEL_PATH, "wb") as f:
-            for data in response.iter_content(block_size):
-                f.write(data)
-
-        print("Model download complete!")
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    with open(MODEL_PATH, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    print("Model downloaded successfully")
 
 
 # Initialize model at startup
