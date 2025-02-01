@@ -42,3 +42,6 @@ Thumbs.db
 
 # Model files
 models/*.pth
+
+# Test outputs
+tests/e2e/images/webhook_processed_*.jpg
