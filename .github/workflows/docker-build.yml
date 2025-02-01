@@ -13,6 +13,11 @@ on:
       - 'docker-compose*.yml'
   workflow_dispatch:  # Allow manual triggers
 
+# Cancel in-progress runs when a new workflow is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   OWNER: ${{ github.repository_owner }}
