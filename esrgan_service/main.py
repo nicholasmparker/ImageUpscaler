@@ -62,18 +62,24 @@ else:
 app = FastAPI(
     title="Real-ESRGAN Service",
     # Set longer timeout for the whole application
-    timeout=REQUEST_TIMEOUT
+    timeout=REQUEST_TIMEOUT,
 )
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint that returns the current device being used"""
-    return {
-        "status": "healthy",
-        "device": DEVICE,
-        "gpu_available": torch.cuda.is_available() if USE_GPU else False,
-    }
+    try:
+        # Try to create a small tensor to verify CUDA/CPU is working
+        device = torch.device(DEVICE)
+        torch.tensor([1.0], device=device)
+        return {
+            "status": "healthy",
+            "device": DEVICE,
+            "gpu_available": torch.cuda.is_available() if USE_GPU else False,
+        }
+    except Exception as err:
+        raise HTTPException(500, "ESRGAN service is unhealthy") from err
 
 
 @app.post("/upscale")
@@ -100,11 +106,9 @@ async def upscale_image(request: Request):
         try:
             image = Image.open(io.BytesIO(image_data))
             print(f"Loaded image: {image.format}, size: {image.size}")
-        except Exception as e:
-            print(f"Error loading image: {str(e)}")
-            raise HTTPException(
-                status_code=400, detail=f"Invalid image format or corrupted image data: {str(e)}"
-            )
+            image = image.convert("RGB")
+        except Exception as err:
+            raise HTTPException(400, "Invalid image data") from err
 
         # Check image size
         max_pixels = 2000 * 2000  # Max 4MP image
@@ -114,39 +118,24 @@ async def upscale_image(request: Request):
                 detail=f"Image too large. Max size: {max_pixels} pixels",
             )
 
-        # Convert to RGB if necessary
-        if image.mode != "RGB":
-            print(f"Converting image from {image.mode} to RGB")
-            image = image.convert("RGB")
-
         print("Processing image with Real-ESRGAN...")
         try:
             output, _ = upsampler.enhance(np.array(image))
             print(f"Processing complete, output shape: {output.shape}")
-        except Exception as e:
-            print(f"Error during upscaling: {str(e)}")
+            output_image = Image.fromarray(output)
+            output_buffer = io.BytesIO()
+            output_image.save(output_buffer, format="JPEG")
+            output_buffer.seek(0)
+            return Response(
+                content=output_buffer.read(),
+                media_type="image/jpeg",
+            )
+        except Exception as err:
+            print(f"Unexpected error: {str(err)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error during image upscaling: {str(e)}",
-            )
-
-        # Convert back to JPEG
-        output_image = Image.fromarray(output)
-        output_buffer = io.BytesIO()
-        output_image.save(output_buffer, format="JPEG")
-        output_bytes = output_buffer.getvalue()
-        print(f"Generated output image, size: {len(output_bytes)} bytes")
-
-        return Response(
-            content=output_bytes,
-            media_type="image/jpeg",
-        )
+                detail=f"Unexpected error during processing: {str(err)}",
+            ) from err
 
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Unexpected error during processing: {str(e)}",
-        )
