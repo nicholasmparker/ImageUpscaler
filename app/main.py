@@ -24,6 +24,7 @@ async def root():
     """Root endpoint that returns a welcome message and available endpoints"""
     return {
         "message": "Welcome to the Image Upscaler API",
+        "version": "1.0.0",
         "endpoints": {
             "/": "This help message",
             "/upscale": "Synchronously upscale an image",
