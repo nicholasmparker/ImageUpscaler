@@ -1,3 +1,9 @@
+[project]
+name = "imageupscaler"
+version = "1.0.0"
+description = "A dockerized image upscaling service using FastAPI and Real-ESRGAN"
+requires-python = ">=3.9"
+
 [tool.black]
 line-length = 88
 target-version = ['py39']

@@ -51,4 +51,5 @@ jobs:
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
-        args: --severity-threshold=high --file=requirements/prod.txt
+        command: test
+        args: --severity-threshold=high --package-manager=pip --file=requirements/prod.txt
