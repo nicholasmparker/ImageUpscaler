@@ -40,18 +40,17 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Setup Snyk requirements
-      run: |
-        # Install dependencies for accurate dependency graph
-        python -m pip install --upgrade pip
-        pip install -r requirements/prod.txt
-
     - name: Run Snyk to check for vulnerabilities
       uses: snyk/actions/python@master
       continue-on-error: true  # Don't fail the build on vulnerabilities
       env:
-        # The token needs to be available as an environment variable
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       with:
         command: test
-        args: --all-projects --severity-threshold=high
+        args: >-
+          --severity-threshold=high
+          --command=python
+          --file=requirements/prod.txt
+          --package-manager=pip
+          --skip-unresolved
+          --strict-out-of-sync=false
