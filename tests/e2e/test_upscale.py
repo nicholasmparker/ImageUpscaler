@@ -2,10 +2,10 @@
 import io
 import os
 import time
-from PIL import Image
 
 import pytest
 import requests
+from PIL import Image
 
 
 @pytest.fixture
@@ -46,8 +46,12 @@ def test_image_upscale_sync(image_path):
 
             # Verify the processed image is larger
             original_image = Image.open(image_path)
-            assert processed_image.size[0] > original_image.size[0], "Processed image should be larger"
-            assert processed_image.size[1] > original_image.size[1], "Processed image should be larger"
+            assert (
+                processed_image.size[0] > original_image.size[0]
+            ), "Processed image should be larger"
+            assert (
+                processed_image.size[1] > original_image.size[1]
+            ), "Processed image should be larger"
 
             print("Test completed successfully!")
 
@@ -121,8 +125,12 @@ def test_image_upscale_async(image_path):
 
             # Verify the processed image is larger
             original_image = Image.open(image_path)
-            assert processed_image.size[0] > original_image.size[0], "Processed image should be larger"
-            assert processed_image.size[1] > original_image.size[1], "Processed image should be larger"
+            assert (
+                processed_image.size[0] > original_image.size[0]
+            ), "Processed image should be larger"
+            assert (
+                processed_image.size[1] > original_image.size[1]
+            ), "Processed image should be larger"
 
             print("Test completed successfully!")
 
@@ -166,7 +174,7 @@ def test_list_jobs(image_path):
 
         jobs = jobs_response.json()["jobs"]
         print(f"Found {len(jobs)} jobs")
-        
+
         # Verify our job is in the list
         found = False
         for job in jobs:

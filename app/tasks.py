@@ -16,8 +16,8 @@ async def process_image(image: UploadFile, redis: Redis) -> str:
         f"task:{task_id}",
         mapping={
             "status": "processing",
-            "created_at": datetime.utcnow().isoformat()
-        }
+            "created_at": datetime.utcnow().isoformat(),
+        },
     )
 
     try:
@@ -27,10 +27,10 @@ async def process_image(image: UploadFile, redis: Redis) -> str:
         # Send to ESRGAN service
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"http://esrgan:8001/upscale",
+                "http://esrgan:8001/upscale",
                 content=image_data,
                 headers={"Content-Type": image.content_type or "image/jpeg"},
-                timeout=float(os.getenv("REQUEST_TIMEOUT", "300"))
+                timeout=float(os.getenv("REQUEST_TIMEOUT", "300")),
             )
             response.raise_for_status()
 
