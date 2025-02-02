@@ -4,11 +4,16 @@ from typing import Dict, List
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import Response
+from pydantic import BaseModel
 from redis.asyncio import Redis
 
 from app.tasks import process_image
 
-app = FastAPI()
+app = FastAPI(
+    title="Image Upscaler API",
+    description="A FastAPI service for upscaling images using Real-ESRGAN",
+    version="1.0.0",
+)
 
 # Simple Redis connection
 redis = Redis(
@@ -19,9 +24,48 @@ redis = Redis(
 )
 
 
-@app.get("/")
+class ApiInfo(BaseModel):
+    message: str
+    version: str
+    endpoints: Dict[str, str]
+
+
+class TaskResponse(BaseModel):
+    task_id: str
+
+
+class TaskStatus(BaseModel):
+    task_id: str
+    status: str
+    created_at: str
+
+
+class JobList(BaseModel):
+    jobs: List[TaskStatus]
+
+
+@app.get("/", response_model=ApiInfo)
 async def root():
-    """Root endpoint that returns a welcome message and available endpoints"""
+    """
+    Root endpoint that returns API information and available endpoints.
+
+    Returns:
+        dict: API information including version and available endpoints
+
+    Example response:
+        {
+            "message": "Welcome to the Image Upscaler API",
+            "version": "1.0.0",
+            "endpoints": {
+                "/": "This help message",
+                "/upscale": "Synchronously upscale an image",
+                "/upscale/async": "Asynchronously upscale an image",
+                "/status/{task_id}": "Check status of async upscale task",
+                "/result/{task_id}": "Get result of completed task",
+                "/jobs": "List all jobs"
+            }
+        }
+    """
     return {
         "message": "Welcome to the Image Upscaler API",
         "version": "1.0.0",
@@ -38,7 +82,19 @@ async def root():
 
 @app.post("/upscale")
 async def upscale_image_sync(image: UploadFile) -> Response:
-    """Synchronously upscale an image"""
+    """
+    Synchronously upscale an image. This endpoint will block until the image is processed.
+
+    Args:
+        image: The image file to upscale
+
+    Returns:
+        Response: The upscaled image in JPEG format
+
+    Raises:
+        HTTPException(400): If no file is uploaded
+        HTTPException(500): If there's an error processing the image
+    """
     if not image:
         raise HTTPException(400, "No file uploaded")
 
@@ -60,9 +116,26 @@ async def upscale_image_sync(image: UploadFile) -> Response:
         raise HTTPException(500, str(e)) from e
 
 
-@app.post("/upscale/async")
+@app.post("/upscale/async", response_model=TaskResponse)
 async def upscale_image_async(image: UploadFile) -> Dict[str, str]:
-    """Asynchronously upscale an image"""
+    """
+    Asynchronously upscale an image. Returns immediately with a task ID.
+
+    Args:
+        image: The image file to upscale
+
+    Returns:
+        dict: Contains the task_id for checking status
+
+    Raises:
+        HTTPException(400): If no file is uploaded
+        HTTPException(500): If there's an error queuing the task
+
+    Example response:
+        {
+            "task_id": "123e4567-e89b-12d3-a456-426614174000"
+        }
+    """
     if not image:
         raise HTTPException(400, "No file uploaded")
 
@@ -74,9 +147,27 @@ async def upscale_image_async(image: UploadFile) -> Dict[str, str]:
         raise HTTPException(500, str(e)) from e
 
 
-@app.get("/status/{task_id}")
+@app.get("/status/{task_id}", response_model=TaskStatus)
 async def get_task_status(task_id: str) -> Dict[str, str]:
-    """Get the status of a task"""
+    """
+    Get the status of an upscaling task.
+
+    Args:
+        task_id: The ID of the task to check
+
+    Returns:
+        dict: Task status information
+
+    Raises:
+        HTTPException(404): If the task is not found
+
+    Example response:
+        {
+            "task_id": "123e4567-e89b-12d3-a456-426614174000",
+            "status": "completed",
+            "created_at": "2024-02-02T10:30:00"
+        }
+    """
     task_info = await redis.hgetall(f"task:{task_id}")
     if not task_info:
         raise HTTPException(404, "Task not found")
@@ -90,7 +181,19 @@ async def get_task_status(task_id: str) -> Dict[str, str]:
 
 @app.get("/result/{task_id}")
 async def get_task_result(task_id: str) -> Response:
-    """Get the result of a completed task"""
+    """
+    Get the result of a completed upscaling task.
+
+    Args:
+        task_id: The ID of the completed task
+
+    Returns:
+        Response: The upscaled image in JPEG format
+
+    Raises:
+        HTTPException(404): If the task or result is not found
+        HTTPException(400): If the task is not completed
+    """
     task_info = await redis.hgetall(f"task:{task_id}")
     if not task_info:
         raise HTTPException(404, "Task not found")
@@ -106,9 +209,25 @@ async def get_task_result(task_id: str) -> Response:
     return Response(content=result, media_type="image/jpeg")
 
 
-@app.get("/jobs")
+@app.get("/jobs", response_model=JobList)
 async def list_jobs() -> Dict[str, List[Dict[str, str]]]:
-    """List all jobs"""
+    """
+    List all upscaling jobs in the system.
+
+    Returns:
+        dict: List of all jobs with their status
+
+    Example response:
+        {
+            "jobs": [
+                {
+                    "task_id": "123e4567-e89b-12d3-a456-426614174000",
+                    "status": "completed",
+                    "created_at": "2024-02-02T10:30:00"
+                }
+            ]
+        }
+    """
     jobs = []
     async for key in redis.scan_iter("task:*"):
         task_id = key.decode().split(":", 1)[1]
@@ -125,5 +244,15 @@ async def list_jobs() -> Dict[str, List[Dict[str, str]]]:
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint"""
+    """
+    Health check endpoint.
+
+    Returns:
+        dict: Simple status response
+
+    Example response:
+        {
+            "status": "ok"
+        }
+    """
     return {"status": "ok"}

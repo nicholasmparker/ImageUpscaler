@@ -20,6 +20,6 @@ repos:
     rev: v0.1.14
     hooks:
     -   id: ruff
-        args: [--check]
+        args: [--exit-non-zero-on-fix]
         types: [python]
         files: ^.*\.py$
