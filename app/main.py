@@ -21,8 +21,18 @@ redis = Redis(
 
 @app.get("/")
 async def root():
-    """Root endpoint that returns a welcome message"""
-    return {"message": "Welcome to the Image Upscaler API"}
+    """Root endpoint that returns a welcome message and available endpoints"""
+    return {
+        "message": "Welcome to the Image Upscaler API",
+        "endpoints": {
+            "/": "This help message",
+            "/upscale": "Synchronously upscale an image",
+            "/upscale/async": "Asynchronously upscale an image",
+            "/status/{task_id}": "Check status of async upscale task",
+            "/result/{task_id}": "Get result of completed task",
+            "/jobs": "List all jobs",
+        },
+    }
 
 
 @app.post("/upscale")
