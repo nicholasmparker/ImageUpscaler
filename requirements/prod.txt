@@ -6,6 +6,7 @@ git+https://github.com/xinntao/BasicSR.git
 git+https://github.com/xinntao/Real-ESRGAN.git
 pillow==10.3.0
 requests==2.32.2
+httpx==0.26.0
 pydantic==2.5.3
 torch==2.2.0
 torchvision==0.17.0

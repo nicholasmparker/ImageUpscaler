@@ -9,8 +9,6 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from PIL import Image
 from realesrgan import RealESRGANer
 
-app = FastAPI(title="Real-ESRGAN Service")
-
 # Determine if we should use GPU
 USE_GPU = os.getenv("USE_GPU", "0").lower() in ("true", "1", "t")
 DEVICE = "cuda" if USE_GPU and torch.cuda.is_available() else "cpu"
@@ -41,25 +39,31 @@ def ensure_model_exists():
 print("Initializing Real-ESRGAN...")
 ensure_model_exists()
 
+# Get request timeout from environment
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "60"))
+
 # Initialize model once at startup
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32)
 upsampler = RealESRGANer(
     scale=4,
     model_path=MODEL_PATH,
     model=model,
-    tile=400 if DEVICE == "cuda" else 0,  # Use tiling on CPU to manage memory
+    tile=200,  # Use smaller tiles on CPU to manage memory
     tile_pad=10,
     pre_pad=0,
-    half=USE_GPU,  # Only use half precision on GPU
-    device=DEVICE,
+    half=DEVICE == "cuda",
 )
 
-if DEVICE == "cuda":
-    print("Moving model to GPU...")
-    upsampler.model.cuda()
-else:
+if DEVICE == "cpu":
     print("Running on CPU mode...")
-    upsampler.model.cpu()
+else:
+    print("Running on CUDA mode...")
+
+app = FastAPI(
+    title="Real-ESRGAN Service",
+    # Set longer timeout for the whole application
+    timeout=REQUEST_TIMEOUT
+)
 
 
 @app.get("/health")
@@ -79,32 +83,70 @@ async def upscale_image(request: Request):
     Accepts raw binary image data with a content type header.
     Returns the upscaled image as JPEG.
     """
-    content_type = request.headers.get("Content-Type")
-    if not content_type or not content_type.startswith("image/"):
-        raise HTTPException(400, "Content-Type must be an image format")
-
     try:
-        # Read raw binary data
+        content_type = request.headers.get("content-type", "")
+        print(f"Received request with content-type: {content_type}")
+
+        if not content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="Content-Type must be an image format"
+            )
+
+        # Get the raw image data
         image_data = await request.body()
+        print(f"Received image data, size: {len(image_data)} bytes")
 
         # Convert to PIL Image
-        input_img = Image.open(io.BytesIO(image_data))
+        try:
+            image = Image.open(io.BytesIO(image_data))
+            print(f"Loaded image: {image.format}, size: {image.size}")
+        except Exception as e:
+            print(f"Error loading image: {str(e)}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid image format or corrupted image data: {str(e)}"
+            )
 
-        # Process image
-        output, _ = upsampler.enhance(np.array(input_img))
-        output_img = Image.fromarray(output)
+        # Check image size
+        max_pixels = 2000 * 2000  # Max 4MP image
+        if image.size[0] * image.size[1] > max_pixels:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Image too large. Max size: {max_pixels} pixels",
+            )
 
-        # Convert back to bytes
-        img_byte_arr = io.BytesIO()
-        output_img.save(img_byte_arr, format="JPEG")
-        img_byte_arr = img_byte_arr.getvalue()
+        # Convert to RGB if necessary
+        if image.mode != "RGB":
+            print(f"Converting image from {image.mode} to RGB")
+            image = image.convert("RGB")
+
+        print("Processing image with Real-ESRGAN...")
+        try:
+            output, _ = upsampler.enhance(np.array(image))
+            print(f"Processing complete, output shape: {output.shape}")
+        except Exception as e:
+            print(f"Error during upscaling: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error during image upscaling: {str(e)}",
+            )
+
+        # Convert back to JPEG
+        output_image = Image.fromarray(output)
+        output_buffer = io.BytesIO()
+        output_image.save(output_buffer, format="JPEG")
+        output_bytes = output_buffer.getvalue()
+        print(f"Generated output image, size: {len(output_bytes)} bytes")
 
         return Response(
-            content=img_byte_arr,
+            content=output_bytes,
             media_type="image/jpeg",
-            headers={"X-Original-Content-Type": content_type},
         )
+
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to process image: {str(e)}"
-        ) from e
+            status_code=500,
+            detail=f"Unexpected error during processing: {str(e)}",
+        )

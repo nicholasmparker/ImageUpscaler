@@ -12,12 +12,13 @@ services:
       - REDIS_PASSWORD=1d3pdn
       - ESRGAN_HOST=esrgan
       - ESRGAN_PORT=8001
+      - REQUEST_TIMEOUT=300  # 5 minutes timeout for requests
     networks:
       - upscaler-network
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -34,16 +35,23 @@ services:
     environment:
       - USE_GPU=false
       - MODEL_PATH=/app/models/RealESRGAN_x4plus.pth
+      - REQUEST_TIMEOUT=300  # 5 minutes timeout for requests
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
     networks:
       - upscaler-network
     ports:
       - "8001:8001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 30s
 
   test:
     build:
@@ -64,30 +72,6 @@ services:
         condition: service_healthy
       esrgan:
         condition: service_healthy
-
-  test-webhook:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/app
-    environment:
-      - WEBHOOK_HOST=test-webhook
-      - WEBHOOK_PORT=9090
-      - API_HOST=api
-      - API_PORT=8000
-    command: >
-      sh -c "pip install -r requirements/test.txt &&
-             python tests/e2e/test_webhook.py tests/e2e/images/bird.jpg"
-    depends_on:
-      api:
-        condition: service_healthy
-      esrgan:
-        condition: service_healthy
-    networks:
-      - upscaler-network
-    ports:
-      - "9090:9090"
 
 networks:
   upscaler-network:

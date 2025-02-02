@@ -1,102 +1,105 @@
 import os
+from typing import Dict, List
+import asyncio
 
-import redis
-import requests
-from fastapi import FastAPI, HTTPException, Response, UploadFile
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.responses import Response
+from redis.asyncio import Redis
+import httpx
 
-from .models import UpscaleResponse
-from .tasks import process_image
+from app.tasks import process_image
 
-app = FastAPI(title="Image Upscaler API")
+app = FastAPI()
 
-redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST", "truenas.chickenmilkbomb.com"),
-    port=int(os.getenv("REDIS_PORT", 30036)),
-    password=os.getenv("REDIS_PASSWORD", "1d3pdn"),
-    decode_responses=True,
+# Simple Redis connection
+redis = Redis(
+    host=os.environ.get("REDIS_HOST", "redis"),
+    port=int(os.environ.get("REDIS_PORT", "6379")),
+    password=os.environ.get("REDIS_PASSWORD", ""),
+    decode_responses=False  # Keep binary data for image results
 )
 
-
-def process_image_sync(image_data: bytes, content_type: str) -> bytes:
-    """Process an image synchronously using the ESRGAN service."""
-    esrgan_host = os.getenv("ESRGAN_HOST", "localhost")
-    esrgan_port = os.getenv("ESRGAN_PORT", "8001")
-
-    # Send image to ESRGAN service with proper content type
-    headers = {"Content-Type": content_type}
-    response = requests.post(
-        f"http://{esrgan_host}:{esrgan_port}/upscale", data=image_data, headers=headers
-    )
-
-    if response.status_code == 400:
-        raise HTTPException(
-            status_code=400, detail="Invalid image format or corrupted image data"
-        )
-    elif response.status_code == 413:
-        raise HTTPException(status_code=413, detail="Image size too large")
-    elif response.status_code != 200:
-        raise HTTPException(
-            status_code=500, detail="ESRGAN service failed to process image"
-        )
-
-    return response.content
-
-
-@app.post("/upscale", response_model=UpscaleResponse)
-async def upscale_image(image: UploadFile, webhook_url: str):
-    """
-    Upload an image for upscaling.
-    The processed image will be sent to the webhook_url when complete.
-    """
-    # Check if file is provided
+@app.post("/upscale")
+async def upscale_image_sync(image: UploadFile) -> Response:
+    """Synchronously upscale an image"""
     if not image:
         raise HTTPException(400, "No file uploaded")
 
-    # Check content type if available
-    if image.content_type and not image.content_type.startswith("image/"):
-        raise HTTPException(400, "File must be an image")
-
-    # Store the image and queue the task
-    task_id = await process_image(image, webhook_url, redis_client)
-
-    return UpscaleResponse(task_id=task_id, status="processing")
-
-
-@app.post("/upscale/sync")
-async def upscale_image_sync(image: UploadFile):
-    """
-    Synchronous endpoint that returns the processed image directly.
-
-    Returns:
-        Response: The upscaled image as a binary response with image/jpeg content type
-
-    Raises:
-        400: If no file is uploaded or if the file is not an image
-        413: If the image is too large
-        500: If the ESRGAN service fails to process the image
-    """
-    # Validate input
-    if not image:
-        raise HTTPException(400, "No file uploaded")
-
-    if not image.content_type:
-        raise HTTPException(400, "Content-Type header required")
-
-    if not image.content_type.startswith("image/"):
-        raise HTTPException(400, "File must be an image")
-
-    # Read and process image
     try:
+        # Read image data
         image_data = await image.read()
-        processed_image = process_image_sync(image_data, image.content_type)
-        return Response(
-            content=processed_image,
-            media_type="image/jpeg",
-            headers={"X-Original-Content-Type": image.content_type},
-        )
-    except HTTPException:
-        raise
+        
+        # Send to ESRGAN service
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://esrgan:8001/upscale",
+                content=image_data,
+                headers={"Content-Type": image.content_type or "image/jpeg"},
+                timeout=float(os.getenv("REQUEST_TIMEOUT", "300"))
+            )
+            response.raise_for_status()
+            return Response(content=response.content, media_type="image/jpeg")
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Internal server error while processing image"
-        ) from e
+        raise HTTPException(500, str(e))
+
+@app.post("/upscale/async")
+async def upscale_image_async(image: UploadFile) -> Dict[str, str]:
+    """Asynchronously upscale an image"""
+    if not image:
+        raise HTTPException(400, "No file uploaded")
+
+    try:
+        # Process image and get task ID
+        task_id = await process_image(image, redis)
+        return {"task_id": task_id}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/status/{task_id}")
+async def get_task_status(task_id: str) -> Dict[str, str]:
+    """Get the status of a task"""
+    task_info = await redis.hgetall(f"task:{task_id}")
+    if not task_info:
+        raise HTTPException(404, "Task not found")
+
+    return {
+        "task_id": task_id,
+        "status": task_info.get(b"status", b"unknown").decode(),
+        "created_at": task_info.get(b"created_at", b"").decode()
+    }
+
+@app.get("/result/{task_id}")
+async def get_task_result(task_id: str) -> Response:
+    """Get the result of a completed task"""
+    task_info = await redis.hgetall(f"task:{task_id}")
+    if not task_info:
+        raise HTTPException(404, "Task not found")
+
+    status = task_info.get(b"status", b"unknown").decode()
+    if status != "completed":
+        raise HTTPException(400, f"Task is not completed. Status: {status}")
+
+    result = await redis.get(f"result:{task_id}")
+    if not result:
+        raise HTTPException(404, "Result not found")
+
+    return Response(content=result, media_type="image/jpeg")
+
+@app.get("/jobs")
+async def list_jobs() -> Dict[str, List[Dict[str, str]]]:
+    """List all jobs"""
+    jobs = []
+    async for key in redis.scan_iter("task:*"):
+        task_id = key.decode().split(":", 1)[1]
+        task_info = await redis.hgetall(key)
+        jobs.append({
+            "task_id": task_id,
+            "status": task_info.get(b"status", b"unknown").decode(),
+            "created_at": task_info.get(b"created_at", b"").decode()
+        })
+    return {"jobs": jobs}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "ok"}

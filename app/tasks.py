@@ -1,40 +1,45 @@
+import os
 import uuid
+from datetime import datetime
 
-import requests
+import httpx
 from fastapi import UploadFile
+from redis.asyncio import Redis
 
 
-async def process_image(image: UploadFile, webhook_url: str, redis_client):
-    """Process the image using Real-ESRGAN service and send result to webhook"""
+async def process_image(image: UploadFile, redis: Redis) -> str:
+    """Process the image using Real-ESRGAN service"""
     task_id = str(uuid.uuid4())
 
     # Store task info in Redis
-    redis_client.hset(
-        f"task:{task_id}", mapping={"status": "processing", "webhook_url": webhook_url}
+    await redis.hset(
+        f"task:{task_id}",
+        mapping={
+            "status": "processing",
+            "created_at": datetime.utcnow().isoformat()
+        }
     )
 
     try:
-        # Read image data and content type
+        # Read image data
         image_data = await image.read()
-        content_type = image.content_type or "image/jpeg"
 
-        # Send to ESRGAN service with proper content type
-        headers = {"Content-Type": content_type}
-        response = requests.post(
-            "http://esrgan:8001/upscale", data=image_data, headers=headers
-        )
-        response.raise_for_status()
+        # Send to ESRGAN service
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://esrgan:8001/upscale",
+                content=image_data,
+                headers={"Content-Type": image.content_type or "image/jpeg"},
+                timeout=float(os.getenv("REQUEST_TIMEOUT", "300"))
+            )
+            response.raise_for_status()
 
-        # Send the upscaled image to webhook as raw binary
-        headers = {"Content-Type": "image/jpeg"}
-        webhook_response = requests.post(
-            webhook_url, data=response.content, headers=headers
-        )
-        webhook_response.raise_for_status()
+            # Store result in Redis
+            await redis.set(f"result:{task_id}", response.content)
+            await redis.hset(f"task:{task_id}", "status", "completed")
 
-        redis_client.hset(f"task:{task_id}", "status", "completed")
     except Exception as e:
-        redis_client.hset(f"task:{task_id}", "status", f"error: {str(e)}")
+        await redis.hset(f"task:{task_id}", "status", f"error: {str(e)}")
         raise
 
     return task_id
