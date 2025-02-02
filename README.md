@@ -29,6 +29,29 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
    USE_GPU=1 docker-compose up --build
    ```
 
+## Environment Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your configuration:
+   ```
+   # Redis configuration
+   REDIS_HOST=redis
+   REDIS_PORT=6379
+   REDIS_PASSWORD=your_secure_password_here
+
+   # ESRGAN service configuration
+   REQUEST_TIMEOUT=300
+   ```
+
+3. Start the services:
+   ```bash
+   docker compose up
+   ```
+
 ## Testing
 
 For information about running tests, see the [Test Documentation](tests/README.md).

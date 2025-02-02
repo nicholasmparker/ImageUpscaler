@@ -38,6 +38,7 @@ Thumbs.db
 # Application specific
 /tmp/
 *.log
+# Environment variables
 .env
 
 # Model files

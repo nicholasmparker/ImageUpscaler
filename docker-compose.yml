@@ -18,9 +18,9 @@ services:
   api:
     image: ghcr.io/nicholasmparker/imageupscaler-api:latest
     environment:
-      - REDIS_HOST=truenas.chickenmilkbomb.com
-      - REDIS_PORT=30036
-      - REDIS_PASSWORD=1d3pdn
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - ESRGAN_HOST=esrgan
       - ESRGAN_PORT=8001
     networks:
