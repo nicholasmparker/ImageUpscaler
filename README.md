@@ -12,6 +12,14 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
 - CI/CD with GitHub Actions
 - End-to-end testing
 
+## Example Results
+
+| Before (Original) | After (4x Upscaled) |
+|:----------------:|:-------------------:|
+| ![Before](docs/images/example_before.jpg) | ![After](docs/images/example_after.jpg) |
+
+*Note: The example above shows 4x upscaling using the RealESRGAN_x4plus model. Results may vary depending on the input image quality and content.*
+
 ## Quick Start
 
 1. Make sure you have Docker and Docker Compose installed
@@ -172,6 +180,40 @@ To run checks manually:
    ```bash
    make lint
    ```
+
+## Development
+
+### Code Quality
+
+The project uses several tools to maintain code quality:
+
+1. **Black** - Code formatting
+   - Configured in `pyproject.toml`
+   - Run automatically in pre-commit and CI
+
+2. **Ruff** - Fast Python linter
+   - Run automatically in pre-commit and CI
+   - Helps catch common issues
+
+3. **Snyk** - Security vulnerability scanning
+   - Scans production dependencies
+   - Runs on every push and PR
+   - Configured to check for high-severity issues
+
+### Pre-commit Hooks
+
+Install pre-commit hooks to ensure code quality before committing:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+This will automatically:
+- Format code with Black
+- Run Ruff linting
+- Check for sensitive data
+- Ensure consistent file formatting
 
 ## Deploying with Portainer
 
