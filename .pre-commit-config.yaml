@@ -17,9 +17,9 @@ repos:
         args: [--check]
 
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.6
+    rev: v0.1.14
     hooks:
     -   id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--check]
         types: [python]
         files: ^.*\.py$
