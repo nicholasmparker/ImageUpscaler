@@ -10,6 +10,7 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
 - Webhook delivery of processed images
 - Docker-based deployment
 - CI/CD with GitHub Actions
+- End-to-end testing
 
 ## Quick Start
 
@@ -27,6 +28,10 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
    # Make sure you have nvidia-docker2 installed
    USE_GPU=1 docker-compose up --build
    ```
+
+## Testing
+
+For information about running tests, see the [Test Documentation](tests/README.md).
 
 ## Hardware Requirements
 
