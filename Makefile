@@ -1,7 +1,6 @@
 .PHONY: install format lint test clean check-status
 
 install:
-	pip install -r requirements.txt
 	pre-commit install
 
 format:
@@ -42,10 +41,10 @@ push-and-check: ## Push to GitHub and check workflow status
 
 # Docker commands
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-up:
-	docker-compose up
+	docker compose up
 
 docker-down:
-	docker-compose down
+	docker compose down

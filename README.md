@@ -28,13 +28,13 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
 
    **CPU Mode (Default):**
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
    **GPU Mode (Requires NVIDIA Docker):**
    ```bash
    # Make sure you have nvidia-docker2 installed
-   USE_GPU=1 docker-compose up --build
+   USE_GPU=1 docker compose up --build
    ```
 
 ## Environment Setup
