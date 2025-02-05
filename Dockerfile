@@ -4,7 +4,7 @@ FROM python:3.9-slim AS builder
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
     git \
@@ -20,20 +20,18 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies and cleanup in same layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels from previous stage
+# Copy wheels and install dependencies
 COPY --from=builder /app/wheels /app/wheels
 COPY --from=builder /app/requirements.txt .
-
-# Install dependencies from wheels
-RUN pip install --no-cache /app/wheels/*
+RUN pip install --no-cache /app/wheels/* && \
+    rm -rf /app/wheels
 
 # Copy application code
 COPY app app/

@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,51 +6,62 @@ on:
   pull_request:
     branches: [ main ]
 
-# Cancel in-progress runs when a new workflow with the same concurrency group is triggered
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  lint:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements/prod.txt
-        pip install black==24.1.1 ruff==0.1.14
-    - name: Run black
-      run: black . --check
-    - name: Run ruff
-      run: ruff check .
+      - uses: actions/checkout@v4
 
-  security:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
+      # Cleanup before build
+      - name: Cleanup
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker system prune -af
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
+      # Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
 
-    - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/python@master
-      continue-on-error: true  # Don't fail the build on vulnerabilities
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        command: test
-        args: >-
-          --severity-threshold=high
-          --command=python
-          --file=requirements/prod.txt
-          --package-manager=pip
-          --skip-unresolved
-          --strict-out-of-sync=false
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt
+
+      # Run linting and formatting checks
+      - name: Run linting checks
+        run: |
+          black . --check
+          ruff check .
+
+      # Build Docker images
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: imageupscaler:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Run tests
+      - name: Run tests
+        run: pytest
+
+      # Final cleanup
+      - name: Post-build cleanup
+        if: always()
+        run: |
+          docker system prune -af
+          sudo rm -rf /tmp/*
+          df -h
