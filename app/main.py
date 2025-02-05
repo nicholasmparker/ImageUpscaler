@@ -52,7 +52,9 @@ redis = Redis(
 class ApiInfo(BaseModel):
     message: str = Field(..., description="Welcome message")
     version: str = Field(..., description="API version number")
-    endpoints: Dict[str, str] = Field(..., description="Available endpoints and their descriptions")
+    endpoints: Dict[str, str] = Field(
+        ..., description="Available endpoints and their descriptions"
+    )
 
     class Config:
         schema_extra = {
@@ -63,7 +65,7 @@ class ApiInfo(BaseModel):
                     "/": "This help message",
                     "/upscale": "Synchronously upscale an image",
                     "/upscale/async": "Asynchronously upscale an image",
-                }
+                },
             }
         }
 
@@ -72,16 +74,15 @@ class TaskResponse(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the upscaling task")
 
     class Config:
-        schema_extra = {
-            "example": {
-                "task_id": "123e4567-e89b-12d3-a456-426614174000"
-            }
-        }
+        schema_extra = {"example": {"task_id": "123e4567-e89b-12d3-a456-426614174000"}}
 
 
 class TaskStatus(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the upscaling task")
-    status: str = Field(..., description="Current status of the task (pending, processing, completed, failed)")
+    status: str = Field(
+        ...,
+        description="Current status of the task (pending, processing, completed, failed)",
+    )
     created_at: str = Field(..., description="Timestamp when the task was created")
 
     class Config:
@@ -89,7 +90,7 @@ class TaskStatus(BaseModel):
             "example": {
                 "task_id": "123e4567-e89b-12d3-a456-426614174000",
                 "status": "completed",
-                "created_at": "2024-02-02T10:30:00"
+                "created_at": "2024-02-02T10:30:00",
             }
         }
 
@@ -104,7 +105,7 @@ class JobList(BaseModel):
                     {
                         "task_id": "123e4567-e89b-12d3-a456-426614174000",
                         "status": "completed",
-                        "created_at": "2024-02-02T10:30:00"
+                        "created_at": "2024-02-02T10:30:00",
                     }
                 ]
             }
@@ -115,7 +116,7 @@ class JobList(BaseModel):
 async def root():
     """
     Get API information and available endpoints.
-    
+
     Returns a welcome message, API version, and list of available endpoints with their descriptions.
     This is useful for getting an overview of the API's capabilities.
     """
@@ -134,17 +135,19 @@ async def root():
 
 
 @app.post("/upscale", tags=["Upscaling"])
-async def upscale_image_sync(image: UploadFile = File(..., description="Image file to upscale")) -> Response:
+async def upscale_image_sync(
+    image: UploadFile = File(..., description="Image file to upscale")
+) -> Response:
     """
     Synchronously upscale an image.
-    
+
     This endpoint will process the image immediately and return the result. It may take several
     minutes depending on the image size. For large images, consider using the async endpoint.
-    
+
     - **Input**: Image file (JPEG or PNG)
     - **Output**: Upscaled image in JPEG format
     - **Processing**: 4x upscaling using Real-ESRGAN
-    
+
     The request will timeout after the configured REQUEST_TIMEOUT (default: 300 seconds).
     """
     if not image:
@@ -169,18 +172,20 @@ async def upscale_image_sync(image: UploadFile = File(..., description="Image fi
 
 
 @app.post("/upscale/async", response_model=TaskResponse, tags=["Upscaling"])
-async def upscale_image_async(image: UploadFile = File(..., description="Image file to upscale")) -> Dict[str, str]:
+async def upscale_image_async(
+    image: UploadFile = File(..., description="Image file to upscale")
+) -> Dict[str, str]:
     """
     Asynchronously upscale an image.
-    
+
     This endpoint immediately returns a task ID and processes the image in the background.
     Recommended for larger images or when you don't want to wait for immediate results.
-    
+
     ## Process Flow:
     1. Upload image and receive task_id
     2. Check task status using `/status/{task_id}`
     3. Once status is "completed", get result using `/result/{task_id}`
-    
+
     ## Notes:
     - Task IDs expire after 24 hours
     - Failed tasks will be marked with status "failed"
@@ -200,13 +205,13 @@ async def upscale_image_async(image: UploadFile = File(..., description="Image f
 async def get_task_status(task_id: str) -> Dict[str, str]:
     """
     Get the status of an upscaling task.
-    
+
     ## Status Values:
     - **pending**: Task is queued
     - **processing**: Task is being processed
     - **completed**: Task is complete, result available
     - **failed**: Task failed to process
-    
+
     Use this endpoint to poll for task completion before requesting the result.
     """
     task_info = await redis.hgetall(f"task:{task_id}")
@@ -224,15 +229,15 @@ async def get_task_status(task_id: str) -> Dict[str, str]:
 async def get_task_result(task_id: str) -> Response:
     """
     Get the result of a completed upscaling task.
-    
+
     Returns the upscaled image for completed tasks. Make sure to check the task status
     is "completed" before requesting the result.
-    
+
     ## Error Cases:
     - 404: Task not found (invalid ID or expired)
     - 400: Task not yet completed
     - 404: Result not found (task completed but result expired)
-    
+
     Results are stored for 24 hours after task completion.
     """
     task_info = await redis.hgetall(f"task:{task_id}")
@@ -254,12 +259,12 @@ async def get_task_result(task_id: str) -> Response:
 async def list_jobs() -> Dict[str, List[Dict[str, str]]]:
     """
     List all upscaling jobs in the system.
-    
+
     Returns a list of all tasks and their current status. This is useful for:
     - Monitoring overall system usage
     - Finding specific task IDs
     - Checking task creation times
-    
+
     Results are sorted by creation time (newest first).
     Only shows tasks from the last 24 hours.
     """
@@ -281,7 +286,7 @@ async def list_jobs() -> Dict[str, List[Dict[str, str]]]:
 def health_check():
     """
     Health check endpoint.
-    
+
     Used for monitoring system health and uptime. Returns a simple status response.
     A 200 status code indicates the service is healthy and ready to accept requests.
     """
