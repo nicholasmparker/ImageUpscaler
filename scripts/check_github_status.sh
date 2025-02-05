@@ -30,19 +30,19 @@ check_workflow_status() {
     # Get the workflow runs for this commit
     WORKFLOW_RUNS=$(curl -s -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/repos/${REPO_NAME}/actions/runs?head_sha=${COMMIT_SHA}")
-    
+
     # Check if there are any workflow runs
     TOTAL_COUNT=$(echo $WORKFLOW_RUNS | jq '.total_count')
-    
+
     if [ "$TOTAL_COUNT" -eq "0" ]; then
         echo -e "${YELLOW}No workflow runs found for this commit yet. Waiting...${NC}"
         return 1
     fi
-    
+
     # Get status of each workflow
     echo $WORKFLOW_RUNS | jq -r '.workflow_runs[] | "\(.name)|\(.status)|\(.conclusion)|\(.id)"' | while read -r line; do
         IFS='|' read -r NAME STATUS CONCLUSION RUN_ID <<< "$line"
-        
+
         case $STATUS in
             "completed")
                 if [ "$CONCLUSION" == "success" ]; then
@@ -65,13 +65,13 @@ check_workflow_status() {
                 ;;
         esac
     done
-    
+
     # Check if any workflows are still in progress
     IN_PROGRESS=$(echo $WORKFLOW_RUNS | jq '.workflow_runs[] | select(.status != "completed")')
     if [ ! -z "$IN_PROGRESS" ]; then
         return 1
     fi
-    
+
     return 0
 }
 

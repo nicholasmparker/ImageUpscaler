@@ -2,7 +2,7 @@ import os
 from typing import Dict, List
 
 import httpx
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
@@ -13,18 +13,18 @@ app = FastAPI(
     title="Image Upscaler API",
     description="""
     A FastAPI service for upscaling images using Real-ESRGAN.
-    
+
     ## Features
     - Synchronous and asynchronous image upscaling
     - Support for various image formats
     - Task status tracking
     - Job management
-    
+
     ## Usage
     1. Upload an image using `/upscale` (sync) or `/upscale/async` (async)
     2. For async uploads, use `/status/{task_id}` to check progress
     3. Once complete, get the result using `/result/{task_id}`
-    
+
     ## Notes
     - Maximum image size: 10MB
     - Supported formats: JPEG, PNG
@@ -136,7 +136,8 @@ async def root():
 
 @app.post("/upscale", tags=["Upscaling"])
 async def upscale_image_sync(
-    image: UploadFile = File(..., description="Image file to upscale")
+    image: UploadFile,
+    file: bytes = File(description="Image file to upscale"),
 ) -> Response:
     """
     Synchronously upscale an image.
@@ -173,7 +174,8 @@ async def upscale_image_sync(
 
 @app.post("/upscale/async", response_model=TaskResponse, tags=["Upscaling"])
 async def upscale_image_async(
-    image: UploadFile = File(..., description="Image file to upscale")
+    image: UploadFile,
+    file: bytes = File(description="Image file to upscale"),
 ) -> Dict[str, str]:
     """
     Asynchronously upscale an image.

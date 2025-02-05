@@ -18,7 +18,7 @@ test-e2e: ## Run end-to-end tests
 	fi
 	./tests/e2e/run_test.sh "$(IMAGE)"
 
-test: 
+test:
 	# Add test command here
 
 clean:

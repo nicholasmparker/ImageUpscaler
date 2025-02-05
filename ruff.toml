@@ -1,6 +1,7 @@
+[lint]
 select = ["E", "F", "B", "I"]
 ignore = ["E501"]
 unfixable = ["B"]
 
-[per-file-ignores]
+[lint.per-file-ignores]
 "__init__.py" = ["E402"]

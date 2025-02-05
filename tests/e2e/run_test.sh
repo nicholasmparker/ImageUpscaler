@@ -29,7 +29,7 @@ docker-compose ps | grep "Up" > /dev/null
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}Starting services...${NC}"
     docker-compose up -d
-    
+
     # Wait for services to be ready
     echo -e "${YELLOW}Waiting for services to be ready...${NC}"
     sleep 10
