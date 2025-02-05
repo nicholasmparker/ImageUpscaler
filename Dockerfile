@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python dependencies
 COPY requirements/prod.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
+# Install grpcio directly from wheel
+RUN pip install --no-cache-dir grpcio==1.70.0 && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.9-slim
@@ -27,11 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels and install dependencies
-COPY --from=builder /app/wheels /app/wheels
-COPY --from=builder /app/requirements.txt .
-RUN pip install --no-cache /app/wheels/* && \
-    rm -rf /app/wheels
+# Copy requirements and install
+COPY requirements/prod.txt requirements.txt
+RUN pip install --no-cache-dir grpcio==1.70.0 && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app app/
