@@ -1,14 +1,14 @@
-import os
-from typing import Dict, List
-import uuid
 import datetime
 import logging
-from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
+import os
+import uuid
+from typing import Dict, List
+
+import httpx
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
-import io
-import httpx
 
 from app.tasks import process_image
 
@@ -54,6 +54,7 @@ redis = Redis(
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ApiInfo(BaseModel):
     message: str = Field(..., description="Welcome message")
@@ -208,7 +209,7 @@ async def upscale_image_async(
         # Generate task ID
         task_id = str(uuid.uuid4())
         logger.info(f"Created task ID: {task_id}")
-        
+
         # Initialize task in Redis
         await redis.hset(
             f"task:{task_id}",
@@ -221,11 +222,13 @@ async def upscale_image_async(
         # Read file data before processing
         file_data = await image.read()
         content_type = image.content_type
-        
+
         # Schedule the processing in background with the file data
-        background_tasks.add_task(process_image, file_data, content_type, redis, task_id)
+        background_tasks.add_task(
+            process_image, file_data, content_type, redis, task_id
+        )
         logger.info(f"Task {task_id} scheduled for background processing")
-        
+
         return {"task_id": task_id}
     except Exception as e:
         logger.error(f"Error scheduling task: {str(e)}")

@@ -2,7 +2,6 @@ import io
 import os
 
 import numpy as np
-import requests
 import torch
 from basicsr.archs.rrdbnet_arch import RRDBNet
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -17,32 +16,17 @@ print(f"Initializing Real-ESRGAN using device: {DEVICE}")
 
 MODEL_PATH = "/app/models/RealESRGAN_x4plus.pth"
 
-
-def ensure_model_exists():
-    """Download the model if it doesn't exist."""
-    if os.path.exists(MODEL_PATH):
-        return
-
-    print("Downloading model...")
-    url = "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    with open(MODEL_PATH, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-    print("Model downloaded successfully")
-
-
-# Initialize model at startup
-print("Initializing Real-ESRGAN...")
-ensure_model_exists()
+# Verify model exists
+if not os.path.exists(MODEL_PATH):
+    raise RuntimeError(
+        f"Model not found at {MODEL_PATH}. Please ensure the model is mounted correctly."
+    )
 
 # Get request timeout from environment
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "60"))
 
 # Initialize model once at startup
+print("Initializing Real-ESRGAN...")
 model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32)
 upsampler = RealESRGANer(
     scale=4,
@@ -51,13 +35,14 @@ upsampler = RealESRGANer(
     tile=200,  # Use smaller tiles on CPU to manage memory
     tile_pad=10,
     pre_pad=0,
-    half=DEVICE == "cuda",
+    half=USE_GPU,  # Use half precision only on GPU
+    device=DEVICE,
 )
 
 if DEVICE == "cpu":
     print("Running on CPU mode...")
 else:
-    print("Running on CUDA mode...")
+    print("Running on GPU mode...")
 
 app = FastAPI(
     title="Real-ESRGAN Service",

@@ -1,7 +1,5 @@
-import os
-import uuid
 import logging
-from datetime import datetime
+import os
 
 import httpx
 from fastapi import UploadFile
@@ -11,7 +9,10 @@ from redis.asyncio import Redis
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def process_image(image_data: bytes, content_type: str, redis: Redis, task_id: str) -> None:
+
+async def process_image(
+    image_data: bytes, content_type: str, redis: Redis, task_id: str
+) -> None:
     """Process the image using Real-ESRGAN service"""
     logger.info(f"Starting background processing for task {task_id}")
 
@@ -20,7 +21,9 @@ async def process_image(image_data: bytes, content_type: str, redis: Redis, task
         await redis.hset(f"task:{task_id}", "status", "processing")
         logger.info(f"Task {task_id}: Status updated to processing")
 
-        logger.info(f"Task {task_id}: Processing image data, size: {len(image_data)} bytes")
+        logger.info(
+            f"Task {task_id}: Processing image data, size: {len(image_data)} bytes"
+        )
 
         # Send to ESRGAN service
         logger.info(f"Task {task_id}: Sending to ESRGAN service")
@@ -44,7 +47,10 @@ async def process_image(image_data: bytes, content_type: str, redis: Redis, task
         logger.error(error_msg)
         await redis.hset(f"task:{task_id}", "status", f"error: {str(e)}")
 
-async def process_image_background(image: UploadFile, redis: Redis, task_id: str) -> None:
+
+async def process_image_background(
+    image: UploadFile, redis: Redis, task_id: str
+) -> None:
     """Process the image using Real-ESRGAN service in the background"""
     logger.info(f"Starting background processing for task {task_id}")
 

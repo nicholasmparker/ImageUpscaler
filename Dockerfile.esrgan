@@ -27,9 +27,6 @@ RUN mkdir -p /app/models
 RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    wget \
-    git \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels from previous stage
@@ -39,7 +36,8 @@ COPY --from=builder /app/requirements.txt .
 # Install dependencies from wheels
 RUN pip install --no-cache /app/wheels/*
 
-# Copy application code
+# Copy pre-downloaded model and application code
+COPY models/RealESRGAN_x4plus.pth /app/models/
 COPY esrgan_service esrgan_service/
 
 # Set environment variables
