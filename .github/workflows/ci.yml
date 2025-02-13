@@ -55,11 +55,12 @@ jobs:
       - name: Download ESRGAN model
         run: |
           docker volume create esrgan_models
-          docker run --rm -v esrgan_models:/models curlimages/curl:latest sh -c '
+          docker run --rm -v esrgan_models:/models --user root curlimages/curl:latest sh -c '
             mkdir -p /models &&
             if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
               echo "Downloading RealESRGAN model..." &&
-              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth &&
+              chmod 644 /models/RealESRGAN_x4plus.pth;
             else
               echo "Model already exists";
             fi'
@@ -100,11 +101,12 @@ jobs:
       - name: Download ESRGAN model
         run: |
           docker volume create esrgan_models
-          docker run --rm -v esrgan_models:/models curlimages/curl:latest sh -c '
+          docker run --rm -v esrgan_models:/models --user root curlimages/curl:latest sh -c '
             mkdir -p /models &&
             if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
               echo "Downloading RealESRGAN model..." &&
-              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth &&
+              chmod 644 /models/RealESRGAN_x4plus.pth;
             else
               echo "Model already exists";
             fi'
