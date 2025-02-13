@@ -70,13 +70,13 @@ jobs:
       - name: Run tests
         run: |
           # Start services needed for tests
-          docker-compose up -d
+          docker compose up -d
           # Wait for services to be ready
           sleep 10
           # Run tests
           pytest
           # Cleanup
-          docker-compose down
+          docker compose down
 
   build-and-push:
     needs: build-and-test
