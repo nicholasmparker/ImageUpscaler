@@ -43,21 +43,6 @@ jobs:
           python-version: '3.9'
           cache: 'pip'
 
-      # Cache ESRGAN model
-      - name: Cache ESRGAN model
-        id: cache-model
-        uses: actions/cache@v3
-        with:
-          path: models/RealESRGAN_x4plus.pth
-          key: esrgan-model-v1
-
-      # Download model if not cached
-      - name: Download ESRGAN model if needed
-        if: steps.cache-model.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p models
-          wget -O models/RealESRGAN_x4plus.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth
-
       # Install dependencies
       - name: Install dependencies
         run: |
@@ -74,19 +59,24 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Copy model into Docker context
-      - name: Prepare Docker context
+      # Create Docker volume and download model
+      - name: Download ESRGAN model
         run: |
-          mkdir -p .docker-context/models
-          cp models/RealESRGAN_x4plus.pth .docker-context/models/
-          cp -r esrgan_service .docker-context/
-          cp Dockerfile.esrgan .docker-context/Dockerfile
-          cp -r requirements .docker-context/
+          docker volume create esrgan_models
+          docker run --rm -v esrgan_models:/models curlimages/curl:latest sh -c '
+            mkdir -p /models &&
+            if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
+              echo "Downloading RealESRGAN model..." &&
+              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+            else
+              echo "Model already exists";
+            fi'
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: .docker-context
+          context: .
+          file: ./Dockerfile.esrgan
           push: false
           load: true
           tags: imageupscaler:latest
