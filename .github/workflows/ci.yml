@@ -58,6 +58,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements/dev.txt
+          pip install pytest pytest-asyncio httpx
 
       # Run linting and formatting checks
       - name: Run linting checks
@@ -67,7 +68,15 @@ jobs:
 
       # Run tests
       - name: Run tests
-        run: pytest
+        run: |
+          # Start services needed for tests
+          docker-compose up -d
+          # Wait for services to be ready
+          sleep 10
+          # Run tests
+          pytest
+          # Cleanup
+          docker-compose down
 
   build-and-push:
     needs: build-and-test
