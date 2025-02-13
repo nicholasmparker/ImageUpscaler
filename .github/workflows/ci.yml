@@ -80,7 +80,7 @@ jobs:
           mkdir -p .docker-context/models
           cp models/RealESRGAN_x4plus.pth .docker-context/models/
           cp -r esrgan_service .docker-context/
-          cp Dockerfile.esrgan .docker-context/
+          cp Dockerfile.esrgan .docker-context/Dockerfile
           cp -r requirements .docker-context/
 
       - name: Build and push
