@@ -21,14 +21,14 @@ services:
       dockerfile: Dockerfile
     environment:
       - REDIS_HOST=redis
-      - REDIS_PORT=6380
+      - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - ESRGAN_HOST=esrgan
       - ESRGAN_PORT=8001
     networks:
       - upscaler-network
     ports:
-      - "8000:8000"
+      - "8003:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 10s

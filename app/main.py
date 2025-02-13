@@ -7,6 +7,8 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
+import io
+import httpx
 
 from app.tasks import process_image
 
@@ -203,7 +205,7 @@ async def upscale_image_async(
         raise HTTPException(400, "No file uploaded")
 
     try:
-        # Generate task ID and start processing in background
+        # Generate task ID
         task_id = str(uuid.uuid4())
         logger.info(f"Created task ID: {task_id}")
         
@@ -215,9 +217,13 @@ async def upscale_image_async(
                 "created_at": datetime.datetime.utcnow().isoformat(),
             },
         )
+
+        # Read file data before processing
+        file_data = await image.read()
+        content_type = image.content_type
         
-        # Schedule the processing in background
-        background_tasks.add_task(process_image, image, redis, task_id)
+        # Schedule the processing in background with the file data
+        background_tasks.add_task(process_image, file_data, content_type, redis, task_id)
         logger.info(f"Task {task_id} scheduled for background processing")
         
         return {"task_id": task_id}
