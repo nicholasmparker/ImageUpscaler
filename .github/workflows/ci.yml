@@ -17,8 +17,9 @@ permissions:
   packages: write
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  # First job: Build and test API service
+  build-api:
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
 
@@ -47,29 +48,44 @@ jobs:
           echo "Disk space after cleanup:"
           df -h
 
-      # Set up Docker Buildx
+      # Set up Docker Buildx with disk quota
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+          buildkitd-flags: --debug --oci-worker-gc
 
-      # Create Docker volume and download model
-      - name: Download ESRGAN model
-        run: |
-          docker volume create esrgan_models
-          docker run --rm -v esrgan_models:/models --user root curlimages/curl:latest sh -c '
-            mkdir -p /models &&
-            if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
-              echo "Downloading RealESRGAN model..." &&
-              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth &&
-              chmod 644 /models/RealESRGAN_x4plus.pth;
-            else
-              echo "Model already exists";
-            fi'
+      # Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Run tests in Docker
+      # Build and push API image
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ghcr.io/${{ github.repository }}/api:latest
+            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+          cache-from: type=gha,scope=${{ github.workflow }}
+          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+          outputs: type=docker,dest=/tmp/api-image.tar
+          build-args: |
+            BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+
+      # Run tests
       - name: Run tests
         run: |
-          # Build test environment
-          docker compose build
+          # Load the image we just built
+          docker load < /tmp/api-image.tar
 
           # Run tests in Docker
           docker compose run --rm api pytest
@@ -78,19 +94,49 @@ jobs:
           docker compose down
           docker system prune -af
 
-  build-and-push:
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+  # Second job: Build ESRGAN service
+  build-esrgan:
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
 
-      # Set up Docker Buildx
+      # Aggressive cleanup before build
+      - name: Free disk space
+        run: |
+          echo "Disk space before cleanup:"
+          df -h
+
+          # Remove unnecessary large packages
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/swift
+
+          # Clean Docker system
+          docker system prune -af
+
+          # Clean up GitHub Actions Runner logs
+          sudo rm -rf "/home/runner/runners/2.322.0/_diag"
+          sudo rm -rf "/home/runner/_tool"
+          sudo rm -rf /home/runner/work/_temp/*
+
+          echo "Disk space after cleanup:"
+          df -h
+
+      # Set up Docker Buildx with disk quota
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+          buildkitd-flags: --debug --oci-worker-gc
 
       # Login to GitHub Container Registry
       - name: Login to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -111,26 +157,13 @@ jobs:
               echo "Model already exists";
             fi'
 
-      # Build and push API image
-      - name: Build and push API image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/api:latest
-            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
-
       # Build and push ESRGAN image
       - name: Build and push ESRGAN image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.esrgan
-          push: true
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ghcr.io/${{ github.repository }}/esrgan:latest
             ghcr.io/${{ github.repository }}/esrgan:${{ github.sha }}
@@ -138,6 +171,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
           build-args: |
             BUILDKIT_STEP_LOG_MAX_SIZE=10485760
+          outputs: type=docker,dest=/tmp/esrgan-image.tar
 
       # Final cleanup
       - name: Post-build cleanup
