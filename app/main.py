@@ -1,8 +1,9 @@
 import os
 from typing import Dict, List
-
-import httpx
-from fastapi import FastAPI, File, HTTPException, UploadFile
+import uuid
+import datetime
+import logging
+from fastapi import FastAPI, File, HTTPException, UploadFile, BackgroundTasks
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
@@ -48,6 +49,9 @@ redis = Redis(
     decode_responses=False,  # Keep binary data for image results
 )
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ApiInfo(BaseModel):
     message: str = Field(..., description="Welcome message")
@@ -175,6 +179,7 @@ async def upscale_image_sync(
 @app.post("/upscale/async", response_model=TaskResponse, tags=["Upscaling"])
 async def upscale_image_async(
     image: UploadFile,
+    background_tasks: BackgroundTasks,
     file: bytes = File(description="Image file to upscale"),
 ) -> Dict[str, str]:
     """
@@ -192,14 +197,32 @@ async def upscale_image_async(
     - Task IDs expire after 24 hours
     - Failed tasks will be marked with status "failed"
     """
+    logger.info("Received async upscale request")
     if not image:
+        logger.error("No file uploaded")
         raise HTTPException(400, "No file uploaded")
 
     try:
-        # Process image and get task ID
-        task_id = await process_image(image, redis)
+        # Generate task ID and start processing in background
+        task_id = str(uuid.uuid4())
+        logger.info(f"Created task ID: {task_id}")
+        
+        # Initialize task in Redis
+        await redis.hset(
+            f"task:{task_id}",
+            mapping={
+                "status": "pending",
+                "created_at": datetime.datetime.utcnow().isoformat(),
+            },
+        )
+        
+        # Schedule the processing in background
+        background_tasks.add_task(process_image, image, redis, task_id)
+        logger.info(f"Task {task_id} scheduled for background processing")
+        
         return {"task_id": task_id}
     except Exception as e:
+        logger.error(f"Error scheduling task: {str(e)}")
         raise HTTPException(500, str(e)) from e
 
 
