@@ -39,67 +39,43 @@ jobs:
           # Clean Docker system
           docker system prune -af
 
-          # Remove all cached packages
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-
-          # Remove pip cache
-          pip cache purge
-
-          # Remove npm cache
-          sudo npm cache clean --force
-
-          # Remove unwanted packages
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-
-          # Remove large log files
-          sudo find /var/log -type f -delete
+          # Clean up GitHub Actions Runner logs
+          sudo rm -rf "/home/runner/runners/2.322.0/_diag"
+          sudo rm -rf "/home/runner/_tool"
+          sudo rm -rf /home/runner/work/_temp/*
 
           echo "Disk space after cleanup:"
           df -h
 
-      # Setup Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-          cache: 'pip'
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      # Install dependencies
-      - name: Install dependencies
+      # Create Docker volume and download model
+      - name: Download ESRGAN model
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements/dev.txt
-          pip install pytest pytest-asyncio httpx
+          docker volume create esrgan_models
+          docker run --rm -v esrgan_models:/models curlimages/curl:latest sh -c '
+            mkdir -p /models &&
+            if [ ! -f "/models/RealESRGAN_x4plus.pth" ]; then
+              echo "Downloading RealESRGAN model..." &&
+              curl -L https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -o /models/RealESRGAN_x4plus.pth;
+            else
+              echo "Model already exists";
+            fi'
 
-      # Run linting and formatting checks
-      - name: Run linting checks
-        run: |
-          black . --check
-          ruff check .
-
-      # Run tests
+      # Run tests in Docker
       - name: Run tests
         run: |
-          echo "Disk space before tests:"
-          df -h
+          # Build test environment
+          docker compose build
 
-          # Start services needed for tests
-          docker compose up -d
-          # Wait for services to be ready
-          sleep 10
-          # Run tests
-          pytest
+          # Run tests in Docker
+          docker compose run --rm api pytest
+
           # Cleanup
           docker compose down
           docker system prune -af
-
-          echo "Disk space after tests:"
-          df -h
 
   build-and-push:
     needs: build-and-test
@@ -107,46 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Aggressive cleanup before build
-      - name: Free disk space
-        run: |
-          echo "Disk space before cleanup:"
-          df -h
-
-          # Remove unnecessary large packages
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo rm -rf /usr/share/swift
-
-          # Clean Docker system
-          docker system prune -af
-
-          # Remove all cached packages
-          sudo apt-get clean
-          sudo rm -rf /var/lib/apt/lists/*
-
-          # Remove pip cache
-          pip cache purge
-
-          # Remove npm cache
-          sudo npm cache clean --force
-
-          # Remove unwanted packages
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y azure-cli google-cloud-sdk google-chrome-stable firefox powershell mono-devel
-          sudo apt-get autoremove -y
-
-          # Remove large log files
-          sudo find /var/log -type f -delete
-
-          echo "Disk space after cleanup:"
-          df -h
 
       # Set up Docker Buildx
       - name: Set up Docker Buildx
@@ -185,8 +121,6 @@ jobs:
             ghcr.io/${{ github.repository }}/api:${{ github.sha }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
-          build-args: |
-            BUILDKIT_STEP_LOG_MAX_SIZE=10485760
 
       # Build and push ESRGAN image
       - name: Build and push ESRGAN image
