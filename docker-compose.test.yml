@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageupscaler/api:${GITHUB_SHA:-latest}
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - ESRGAN_HOST=esrgan
+      - ESRGAN_PORT=8001
+    networks:
+      - test-network
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7.2.4-alpine
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
