@@ -42,3 +42,9 @@ docker-compose*.yml
 Dockerfile*
 .pre-commit-config.yaml
 Makefile
+
+# Requirements - exclude everything except api.txt for API service
+requirements/dev.txt
+requirements/esrgan.txt
+requirements/prod.txt
+requirements/test.txt
