@@ -29,7 +29,7 @@ jobs:
           echo "Disk space before cleanup:"
           df -h
 
-          # Remove unnecessary large packages
+          # Remove large packages
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
@@ -37,13 +37,45 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           sudo rm -rf /usr/share/swift
 
+          # Remove development tools and packages
+          sudo apt-get remove -y '^ghc-*' '^dotnet-*' '^llvm-*' '^php*' '^mongodb-*' '^mysql-*' '^postgresql-*' '^cmake-*' '^ninja-*' '^oracle-*' '^powershell*' azure-cli google-cloud-sdk google-chrome-stable firefox
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+          # Remove caches
+          sudo rm -rf /usr/local/lib/android/sdk/platforms
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools
+          sudo rm -rf /usr/local/lib/android/sdk/platform-tools
+          sudo rm -rf /usr/local/lib/android/sdk/tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/.ghcup
+
+          # Remove NPM and other caches
+          npm cache clean --force
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/miniconda
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /opt/microsoft
+
           # Clean Docker system
           docker system prune -af
+          docker builder prune -f
+          docker volume prune -f
 
-          # Clean up GitHub Actions Runner logs
-          sudo rm -rf "/home/runner/runners/2.322.0/_diag"
+          # Remove all containers and images
+          docker stop $(docker ps -q) || true
+          docker rm $(docker ps -aq) || true
+          docker rmi $(docker images -q) || true
+
+          # Clean up GitHub Actions Runner logs and temp files
+          sudo rm -rf "/home/runner/runners/*/diag"
           sudo rm -rf "/home/runner/_tool"
           sudo rm -rf /home/runner/work/_temp/*
+          sudo rm -rf /tmp/*
+
+          # Remove large log files
+          sudo find /var/log -type f -delete
 
           echo "Disk space after cleanup:"
           df -h
@@ -108,7 +140,7 @@ jobs:
           echo "Disk space before cleanup:"
           df -h
 
-          # Remove unnecessary large packages
+          # Remove large packages
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
@@ -116,13 +148,45 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           sudo rm -rf /usr/share/swift
 
+          # Remove development tools and packages
+          sudo apt-get remove -y '^ghc-*' '^dotnet-*' '^llvm-*' '^php*' '^mongodb-*' '^mysql-*' '^postgresql-*' '^cmake-*' '^ninja-*' '^oracle-*' '^powershell*' azure-cli google-cloud-sdk google-chrome-stable firefox
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+
+          # Remove caches
+          sudo rm -rf /usr/local/lib/android/sdk/platforms
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools
+          sudo rm -rf /usr/local/lib/android/sdk/platform-tools
+          sudo rm -rf /usr/local/lib/android/sdk/tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/.ghcup
+
+          # Remove NPM and other caches
+          npm cache clean --force
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/share/miniconda
+          sudo rm -rf /usr/local/lib/node_modules
+          sudo rm -rf /opt/microsoft
+
           # Clean Docker system
           docker system prune -af
+          docker builder prune -f
+          docker volume prune -f
 
-          # Clean up GitHub Actions Runner logs
-          sudo rm -rf "/home/runner/runners/2.322.0/_diag"
+          # Remove all containers and images
+          docker stop $(docker ps -q) || true
+          docker rm $(docker ps -aq) || true
+          docker rmi $(docker images -q) || true
+
+          # Clean up GitHub Actions Runner logs and temp files
+          sudo rm -rf "/home/runner/runners/*/diag"
           sudo rm -rf "/home/runner/_tool"
           sudo rm -rf /home/runner/work/_temp/*
+          sudo rm -rf /tmp/*
+
+          # Remove large log files
+          sudo find /var/log -type f -delete
 
           echo "Disk space after cleanup:"
           df -h
