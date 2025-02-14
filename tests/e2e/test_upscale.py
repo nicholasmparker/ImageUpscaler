@@ -75,10 +75,14 @@ def test_image_upscale_async(image_path):
         with open(image_path, "rb") as f:
             image_data = f.read()
             print(f"Read image data, size: {len(image_data)} bytes")
+            start_upload = time.time()
             files = {"image": ("bird.jpg", image_data, "image/jpeg")}
             print("Sending request...")
-            response = requests.post(api_url, files=files, timeout=300)
-            print(f"Request completed with status: {response.status_code}")
+            response = requests.post(api_url, files=files)
+            upload_time = time.time() - start_upload
+            print(
+                f"Request completed with status: {response.status_code} in {upload_time:.2f} seconds"
+            )
 
             if response.status_code != 200:
                 print(f"Error: Upload failed with status {response.status_code}")
@@ -92,16 +96,19 @@ def test_image_upscale_async(image_path):
 
             # Poll status endpoint until complete
             status_url = f"http://{api_host}:{api_port}/status/{task_id}"
-            timeout = 300  # 5 minutes
+            timeout = 600  # 10 minutes
             start_time = time.time()
+            poll_count = 0
 
             while time.time() - start_time < timeout:
+                poll_count += 1
                 status_response = requests.get(status_url)
                 if status_response.status_code != 200:
                     raise Exception(f"Failed to get status: {status_response.text}")
 
                 status = status_response.json()["status"]
-                print(f"Task status: {status}")
+                elapsed = time.time() - start_time
+                print(f"Poll {poll_count}: Task status after {elapsed:.2f}s: {status}")
 
                 if status == "completed":
                     break

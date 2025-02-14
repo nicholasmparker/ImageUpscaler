@@ -1,11 +1,17 @@
 import datetime
 import logging
 import os
+import time
 import uuid
 from typing import Dict, List
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    HTTPException,
+    UploadFile,
+)
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
@@ -144,7 +150,6 @@ async def root():
 @app.post("/upscale", tags=["Upscaling"])
 async def upscale_image_sync(
     image: UploadFile,
-    file: bytes = File(description="Image file to upscale"),
 ) -> Response:
     """
     Synchronously upscale an image.
@@ -181,9 +186,8 @@ async def upscale_image_sync(
 
 @app.post("/upscale/async", response_model=TaskResponse, tags=["Upscaling"])
 async def upscale_image_async(
-    image: UploadFile,
     background_tasks: BackgroundTasks,
-    file: bytes = File(description="Image file to upscale"),
+    image: UploadFile,
 ) -> Dict[str, str]:
     """
     Asynchronously upscale an image.
@@ -201,6 +205,7 @@ async def upscale_image_async(
     - Failed tasks will be marked with status "failed"
     """
     logger.info("Received async upscale request")
+    start_time = time.time()
     if not image:
         logger.error("No file uploaded")
         raise HTTPException(400, "No file uploaded")
@@ -218,16 +223,20 @@ async def upscale_image_async(
                 "created_at": datetime.datetime.utcnow().isoformat(),
             },
         )
+        logger.info(f"Initialized Redis task in {time.time() - start_time:.2f}s")
 
         # Read file data before processing
         file_data = await image.read()
         content_type = image.content_type
+        logger.info(f"Read {len(file_data)} bytes in {time.time() - start_time:.2f}s")
 
         # Schedule the processing in background with the file data
         background_tasks.add_task(
             process_image, file_data, content_type, redis, task_id
         )
-        logger.info(f"Task {task_id} scheduled for background processing")
+        logger.info(
+            f"Task {task_id} scheduled for background processing in {time.time() - start_time:.2f}s"
+        )
 
         return {"task_id": task_id}
     except Exception as e:
