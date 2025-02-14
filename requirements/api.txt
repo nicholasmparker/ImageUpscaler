@@ -6,6 +6,7 @@ pillow==10.3.0
 requests==2.32.2
 httpx==0.26.0
 pydantic==2.5.3
+pytest==8.0.0
 
 # Security fixes for transitive dependencies
 fonttools>=4.43.0

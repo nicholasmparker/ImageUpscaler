@@ -52,7 +52,7 @@ app = FastAPI(
 
 
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint that returns the current device being used"""
     try:
         # Try to create a small tensor to verify CUDA/CPU is working

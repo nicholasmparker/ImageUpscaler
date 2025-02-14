@@ -41,6 +41,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libgl1-mesa-glx \
         libglib2.0-0 \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -69,4 +70,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 VOLUME /app/models
 
 # Run the application
-CMD ["python", "-m", "esrgan_service.main"]
+CMD ["python", "-m", "esrgan_service"]

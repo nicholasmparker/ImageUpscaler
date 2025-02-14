@@ -35,7 +35,6 @@ ENV
 *.swo
 
 # Project specific
-tests
 docs
 *.md
 docker-compose*.yml

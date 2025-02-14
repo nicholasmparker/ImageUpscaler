@@ -20,11 +20,10 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install runtime dependencies and cleanup in same layer
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    curl \
+# Install runtime dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
@@ -37,6 +36,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy application code
 COPY app app/
+
+# Copy test files
+COPY tests tests/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
