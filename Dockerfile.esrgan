@@ -5,8 +5,8 @@ FROM python:3.9-slim AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy only requirements first to leverage Docker cache
-COPY requirements/prod.txt requirements.txt
+# Copy and install ESRGAN-specific dependencies
+COPY requirements/esrgan.txt requirements.txt
 
 # Install build dependencies and Python packages
 # Install only the necessary system packages
@@ -31,6 +31,9 @@ WORKDIR /app
 # Create model directory
 RUN mkdir -p /app/models
 
+# Copy wheels from previous stage
+COPY --from=builder /app/wheels /app/wheels
+
 # Install runtime dependencies
 # Install only the necessary system packages
 # --no-install-recommends reduces image size
@@ -40,9 +43,6 @@ RUN apt-get update \
         libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy wheels from previous stage and install
-COPY --from=builder /app/wheels /app/wheels
-COPY --from=builder /app/requirements.txt .
 # Install Python dependencies
 # Clean pip cache to reduce image size
 RUN pip install --no-cache-dir /app/wheels/* \
@@ -69,4 +69,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 VOLUME /app/models
 
 # Run the application
-CMD ["uvicorn", "esrgan_service.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["python", "-m", "esrgan_service.main"]

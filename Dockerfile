@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install dependencies
-COPY requirements/prod.txt requirements.txt
+COPY requirements/api.txt requirements.txt
 RUN pip install --no-cache-dir grpcio==1.70.0 \
     && pip install --no-cache-dir -r requirements.txt
 
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies
-COPY requirements/prod.txt requirements.txt
+COPY requirements/api.txt requirements.txt
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/* \
