@@ -105,14 +105,14 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: api_service  # Only build API service directory
           file: ./Dockerfile
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/imageupscaler/api:latest
             ghcr.io/${{ github.repository_owner }}/imageupscaler/api:${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
           outputs: type=docker,dest=/tmp/api-image.tar
           platforms: linux/amd64
           build-args: |
@@ -210,7 +210,7 @@ jobs:
       - name: Build and push ESRGAN image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: esrgan_service  # Only build ESRGAN service directory
           file: ./Dockerfile.esrgan
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
