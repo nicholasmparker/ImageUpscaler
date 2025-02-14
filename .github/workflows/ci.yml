@@ -105,7 +105,7 @@ jobs:
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
-          context: api_service  # Only build API service directory
+          context: .  # Keep root context but use specific Dockerfile
           file: ./Dockerfile
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
@@ -210,7 +210,7 @@ jobs:
       - name: Build and push ESRGAN image
         uses: docker/build-push-action@v5
         with:
-          context: esrgan_service  # Only build ESRGAN service directory
+          context: .  # Keep root context but use specific Dockerfile
           file: ./Dockerfile.esrgan
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
