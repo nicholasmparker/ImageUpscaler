@@ -1,24 +1,15 @@
 # Image Upscaler API
 
-A simple REST API that upscales images using Real-ESRGAN and delivers results via webhook.
+A simple, Docker-based REST API that upscales images using Real-ESRGAN. Built for home use with simplicity in mind.
 
 ## Features
 
-- Upload images for upscaling using Real-ESRGAN
+- Simple REST API for image upscaling
+- Everything runs in Docker - no host dependencies needed
 - Supports both CPU and GPU processing
 - Asynchronous processing with Redis queue
-- Webhook delivery of processed images
-- Docker-based deployment
-- CI/CD with GitHub Actions
-- End-to-end testing
-
-## Example Results
-
-| Before (Original) | After (4x Upscaled) |
-|:----------------:|:-------------------:|
-| ![Before](docs/images/example_before.jpg) | ![After](docs/images/example_after.jpg) |
-
-*Note: The example above shows 4x upscaling using the RealESRGAN_x4plus model. Results may vary depending on the input image quality and content.*
+- End-to-end functional testing
+- Follows REST best practices
 
 ## Quick Start
 
@@ -36,6 +27,23 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
    # Make sure you have nvidia-docker2 installed
    USE_GPU=1 docker compose up --build
    ```
+
+## API Usage
+
+Upload an image for processing:
+```bash
+curl -X POST "http://localhost:8000/upscale" \
+  -F "image=@your_image.jpg" \
+  -F "webhook_url=http://your-webhook-url.com/callback"
+```
+
+The API will return a task ID that you can use to track the progress:
+```json
+{
+  "task_id": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "processing"
+}
+```
 
 ## Environment Setup
 
@@ -62,193 +70,78 @@ A simple REST API that upscales images using Real-ESRGAN and delivers results vi
 
 ## Testing
 
-For information about running tests, see the [Test Documentation](tests/README.md).
+We focus on end-to-end functional tests to ensure the application works as expected. Run the tests with:
 
-## Hardware Requirements
-
-### CPU Mode
-- No special requirements
-- Slower processing
-- Uses more memory due to tiling
-
-### GPU Mode
-- Requires NVIDIA GPU
-- Requires nvidia-docker2 installed
-- Significantly faster processing
-- More efficient memory usage
-
-## API Usage
-
-Upload an image for processing:
 ```bash
-curl -X POST "http://localhost:8000/upscale" \
-  -F "image=@your_image.jpg" \
-  -F "webhook_url=http://your-webhook-url.com/callback"
+docker compose run --rm api pytest
 ```
 
-The API will return a task ID that you can use to track the progress:
-```json
-{
-  "task_id": "123e4567-e89b-12d3-a456-426614174000",
-  "status": "processing"
-}
-```
-
-## Health Check
-
-You can check the current processing mode (CPU/GPU) using:
-```bash
-curl "http://localhost:8001/health"
-```
-
-Response will include the current device being used:
-```json
-{
-  "status": "healthy",
-  "device": "cuda",  # or "cpu"
-  "gpu_available": true  # or false
-}
-```
-
-## Development Setup
-
-### Initial Setup
-
-1. Create a Python virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-2. Install dependencies and set up pre-commit hooks:
-   ```bash
-   make install
-   ```
-
-### Development Commands
-
-We provide several make commands to help with development:
-
-- `make format`: Format code using Black and Ruff
-- `make lint`: Run linting checks
-- `make clean`: Clean up Python cache files
-- `make docker-build`: Build Docker images
-- `make docker-up`: Start Docker containers
-- `make docker-down`: Stop Docker containers
-
-### GitHub Workflow Status
-
-To check the status of GitHub Actions after pushing:
-
-1. Push and automatically check status:
-   ```bash
-   make push-and-check
-   ```
-
-2. Or check status manually after pushing:
-   ```bash
-   make check-status
-   ```
-
-The status checker will:
-- Show the status of all workflow runs for your commit
-- Update every 30 seconds for up to 2.5 minutes
-- Use color coding to indicate success/failure/in-progress
-- Provide a link to the GitHub Actions dashboard if needed
-
-### Pre-commit Hooks
-
-The repository is set up with pre-commit hooks that run automatically before each commit:
-
-- Black (code formatting)
-- Ruff (linting)
-- YAML/TOML validation
-- File checks (trailing whitespace, large files, etc.)
-
-If a hook fails, the commit will be aborted. You can run `make format` to fix most issues automatically.
-
-### Manual Checks
-
-To run checks manually:
-
-1. Format code:
-   ```bash
-   make format
-   ```
-
-2. Run linting:
-   ```bash
-   make lint
-   ```
+The tests verify:
+- Image upload and processing
+- Webhook delivery
+- Error handling
+- API compliance with REST best practices
 
 ## Development
 
-### Code Quality
+### Local Development
 
-The project uses several tools to maintain code quality:
+Everything runs in Docker to ensure consistency:
 
-1. **Black** - Code formatting
-   - Configured in `pyproject.toml`
-   - Run automatically in pre-commit and CI
+1. Make your changes
+2. Rebuild and run the services:
+   ```bash
+   docker compose up --build
+   ```
+3. Run the tests:
+   ```bash
+   docker compose run --rm api pytest
+   ```
 
-2. **Ruff** - Fast Python linter
-   - Run automatically in pre-commit and CI
-   - Helps catch common issues
+### CI/CD Pipeline
 
-3. **Snyk** - Security vulnerability scanning
-   - Scans production dependencies
-   - Runs on every push and PR
-   - Configured to check for high-severity issues
+The project uses a simple GitHub Actions pipeline that:
+
+1. Builds and tests the services in Docker
+2. Uses aggressive disk cleanup for large model files
+3. Pushes images to GitHub Container Registry on main branch
 
 ### Pre-commit Hooks
 
-Install pre-commit hooks to ensure code quality before committing:
+Basic code quality checks run before each commit:
 
 ```bash
 pip install pre-commit
 pre-commit install
 ```
 
-This will automatically:
-- Format code with Black
-- Run Ruff linting
-- Check for sensitive data
-- Ensure consistent file formatting
+## Troubleshooting
 
-## Deploying with Portainer
+### Common Issues
 
-This application can be easily deployed using Portainer. Follow these steps:
+1. **Out of Memory**
+   - For CPU mode: Reduce `TILE_SIZE` in `.env`
+   - For GPU mode: Use a GPU with more VRAM
 
-1. Log into your Portainer instance
-2. Go to "Stacks" in the left sidebar
-3. Click "Add stack"
-4. Name your stack (e.g., "image-upscaler")
-5. Under "Build method", select "Upload"
-6. Upload the `portainer-stack.yml` file from this repository
-7. Click "Deploy the stack"
+2. **Slow Processing**
+   - Enable GPU mode if available
+   - Adjust worker count in `.env`
 
-The stack will create:
-- An initialization container to download the ESRGAN model
-- The API service running on port 8000
-- The ESRGAN service running on port 8001
+3. **Build Failures**
+   - Ensure sufficient disk space (at least 10GB free)
+   - Try cleaning Docker: `docker system prune -af`
 
-### Important Notes
+### Getting Help
 
-- The stack uses a named volume (`esrgan_models`) to persist the downloaded model file
-- Both services have health checks configured
-- The ESRGAN service will wait for the model to be downloaded before starting
-- The services are configured to restart automatically unless stopped manually
+- Open an issue for bugs
+- Use discussions for questions
+- Check closed issues for solutions
 
-### Testing the Deployment
+## License
 
-After deployment, you can test the service by:
+MIT License - see [LICENSE](LICENSE) for details.
 
-1. Visit `http://<your-host>:8000/docs` to view the API documentation
-2. Use the `/upscale/sync` endpoint to test image upscaling
-3. Monitor the service logs in Portainer for any issues
+## Acknowledgments
 
-## Development
-
-- Code formatting is handled by Black
-- Security scanning is done with Snyk
-- CI/CD is handled by GitHub Actions
+- [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) for the upscaling model
+- [FastAPI](https://fastapi.tiangolo.com/) for the API framework

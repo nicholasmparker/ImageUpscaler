@@ -1,6 +1,10 @@
+# Docker Compose configuration for our image upscaling service
+# Designed for simplicity and ease of use in a home environment
+
 version: '3.8'
 
 services:
+  # Service to initialize the ESRGAN model
   init:
     image: curlimages/curl:latest
     command: |
@@ -13,8 +17,9 @@ services:
         echo "Model already exists";
       fi'
     volumes:
-      - esrgan_models:/models
+      - esrgan_models:/models  # Persist model files between restarts
 
+  # Main API service that handles HTTP requests and webhooks
   api:
     build:
       context: .
@@ -40,6 +45,7 @@ services:
       - esrgan
     restart: unless-stopped
 
+  # ESRGAN service that performs the actual image upscaling
   esrgan:
     build:
       context: .
@@ -48,7 +54,7 @@ services:
       - USE_GPU=false
       - MODEL_PATH=/models/RealESRGAN_x4plus.pth
     volumes:
-      - esrgan_models:/models
+      - esrgan_models:/models  # Persist model files between restarts
     networks:
       - upscaler-network
     ports:
@@ -61,6 +67,7 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  # Redis for task queue and result storage
   redis:
     image: redis:7-alpine
     networks:
@@ -68,12 +75,12 @@ services:
     ports:
       - "6380:6379"
     volumes:
-      - redis_data:/data
+      - redis_data:/data  # Persist Redis data between restarts
     restart: unless-stopped
 
 volumes:
-  esrgan_models:
-  redis_data:
+  esrgan_models:  # Stores the downloaded model files
+  redis_data:     # Stores Redis data
 
 networks:
   upscaler-network:
