@@ -19,7 +19,7 @@ permissions:
 jobs:
   # First job: Build and test API service
   build-api:
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -52,10 +52,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: |
-            image=moby/buildkit:latest
-            network=host
-          buildkitd-flags: --debug --oci-worker-gc
+          buildkitd-flags: |
+            --allow-insecure-entitlement security.insecure
+            --allow-insecure-entitlement network.host
+            --debug
 
       # Login to GitHub Container Registry
       - name: Login to GitHub Container Registry
@@ -78,6 +78,7 @@ jobs:
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
           outputs: type=docker,dest=/tmp/api-image.tar
+          platforms: linux/amd64
           build-args: |
             BUILDKIT_STEP_LOG_MAX_SIZE=10485760
 
@@ -96,7 +97,8 @@ jobs:
 
   # Second job: Build ESRGAN service
   build-esrgan:
-    runs-on: ubuntu-latest-16-cores
+    needs: build-api  # Run after API build to avoid parallel disk usage
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -129,10 +131,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: |
-            image=moby/buildkit:latest
-            network=host
-          buildkitd-flags: --debug --oci-worker-gc
+          buildkitd-flags: |
+            --allow-insecure-entitlement security.insecure
+            --allow-insecure-entitlement network.host
+            --debug
 
       # Login to GitHub Container Registry
       - name: Login to GitHub Container Registry
@@ -169,9 +171,10 @@ jobs:
             ghcr.io/${{ github.repository }}/esrgan:${{ github.sha }}
           cache-from: type=gha,scope=${{ github.workflow }}
           cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+          outputs: type=docker,dest=/tmp/esrgan-image.tar
+          platforms: linux/amd64
           build-args: |
             BUILDKIT_STEP_LOG_MAX_SIZE=10485760
-          outputs: type=docker,dest=/tmp/esrgan-image.tar
 
       # Final cleanup
       - name: Post-build cleanup
